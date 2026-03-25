@@ -26,7 +26,7 @@ const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
 
 const ButcherDashboard: React.FC = () => {
   const { round, parts } = useRoundStore();
-  const { orders, updateStatus } = useOrderStore();
+  const { orders, setOrderStatus } = useOrderStore();
   const stats = getRoundStats(parts);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
@@ -169,7 +169,7 @@ const ButcherDashboard: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9' }}>{order.userName}</div>
                       <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                        {order.items.map(i => i.partNameHe).join(', ')} · {order.items.reduce((s, i) => s + i.kg, 0).toFixed(1)} ק"ג
+                        {(order.items ?? []).map(i => i.partNameHe).join(', ')} · {(order.items ?? []).reduce((s, i) => s + i.kg, 0).toFixed(1)} ק"ג
                       </div>
                     </div>
                     <div style={{ textAlign: 'left' as const }}>
@@ -199,7 +199,7 @@ const ButcherDashboard: React.FC = () => {
                     }}>
                       {/* Items */}
                       <div style={{ marginBottom: 12 }}>
-                        {order.items.map((item, i) => (
+                        {(order.items ?? []).map((item, i) => (
                           <div key={i} style={{
                             display: 'flex', justifyContent: 'space-between',
                             fontSize: 13, padding: '4px 0', color: '#94a3b8',
@@ -221,7 +221,7 @@ const ButcherDashboard: React.FC = () => {
                         {nextStatus && (
                           <motion.button
                             whileTap={{ scale: 0.96 }}
-                            onClick={() => updateStatus(order.id, nextStatus)}
+                            onClick={() => setOrderStatus(order.id, nextStatus)}
                             style={{
                               padding: '8px 16px', borderRadius: 8,
                               background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
