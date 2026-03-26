@@ -118,7 +118,7 @@ const OrderHistoryPage: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                         <span style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9' }}>
-                          {order.items.length} פריטים
+                          {order.items?.length || 0} פריטים
                         </span>
                         <span style={{
                           padding: '2px 8px', borderRadius: 6,
@@ -159,7 +159,7 @@ const OrderHistoryPage: React.FC = () => {
                     >
                       {/* Items */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                        {order.items.map((item, i) => (
+                        {(order.items || []).map((item, i) => (
                           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
                             <span style={{ fontSize: 16 }}>{item.partEmoji}</span>
                             <span style={{ flex: 1, color: '#e2e8f0' }}>
