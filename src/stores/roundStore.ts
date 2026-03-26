@@ -14,11 +14,11 @@ interface RoundStore {
   // Initialize – fetch from Supabase or use mock
   initialize: () => Promise<void>;
 
-  // Simulate a purchase (mock mode only)
-  simulatePurchase: () => void;
-
   // Update sold kg for a specific part
   updatePartSold: (partId: string, addKg: number) => void;
+
+  // Update price or total kg for a specific part (butcher/admin)
+  updatePart: (partId: string, updates: Partial<Pick<MeatPart, 'pricePerKg' | 'totalKg'>>) => void;
 
   // Set parts (used by realtime subscription)
   setParts: (parts: MeatPart[]) => void;
@@ -65,30 +65,20 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
     }
   },
 
-  simulatePurchase: () => {
-    set(state => {
-      const eligible = state.parts.filter(
-        p => (p.totalKg - p.soldKg - p.bufferKg) > 1
-      );
-      if (eligible.length === 0) return state;
-      const rp = eligible[Math.floor(Math.random() * eligible.length)];
-      const amount = Math.random() * 1.5 + 0.5;
-      return {
-        parts: state.parts.map(p =>
-          p.id === rp.id
-            ? { ...p, soldKg: Math.min(p.totalKg - p.bufferKg, p.soldKg + amount) }
-            : p
-        ),
-      };
-    });
-  },
-
   updatePartSold: (partId, addKg) => {
     set(state => ({
       parts: state.parts.map(p =>
         p.id === partId
           ? { ...p, soldKg: Math.min(p.totalKg - p.bufferKg, p.soldKg + addKg) }
           : p
+      ),
+    }));
+  },
+
+  updatePart: (partId, updates) => {
+    set(state => ({
+      parts: state.parts.map(p =>
+        p.id === partId ? { ...p, ...updates } : p
       ),
     }));
   },

@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Package, Clock, ChevronDown, ChevronUp, RefreshCw, ShoppingBag } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { MOCK_ORDERS } from '../data/mockData';
-import { Order } from '../types';
+import { useOrderStore } from '../stores/orderStore';
 
 const STATUS_MAP: Record<string, { label: string; color: string; emoji: string }> = {
   pending: { label: 'ממתין לאישור', color: '#f97316', emoji: '⏳' },
@@ -16,22 +15,12 @@ const STATUS_MAP: Record<string, { label: string; color: string; emoji: string }
 
 const OrderHistoryPage: React.FC = () => {
   const user = useAuthStore(s => s.user);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const allOrders = useOrderStore(s => s.orders);
+  const orders = user
+    ? allOrders.filter(o => o.userPhone === user.phone)
+    : [];
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // In mock mode, show mock orders. In Supabase mode, fetch by user ID.
-    const loadOrders = async () => {
-      setLoading(true);
-      // Simulate network delay
-      await new Promise(r => setTimeout(r, 500));
-      // Filter mock orders or use all for demo
-      setOrders(MOCK_ORDERS);
-      setLoading(false);
-    };
-    loadOrders();
-  }, [user]);
+  const loading = false;
 
   if (!user) {
     return (

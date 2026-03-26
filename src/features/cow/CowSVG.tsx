@@ -295,25 +295,29 @@ const CowSVG: React.FC<CowSVGProps> = ({
   };
 
   const labelPos: Record<string, { x: number; y: number; num: string }> = {
-    neck:            { x: 130, y: 220, num: '10' },
-    mock_fillet:     { x: 272, y: 110, num: '6' },
-    shoulder_roast:  { x: 355, y: 130, num: '5' },
-    shoulder_center: { x: 310, y: 260, num: '4' },
-    brisket:         { x: 300, y: 370, num: '3' },
-    front_shank:     { x: 290, y: 510, num: '8' },
-    entrecote:       { x: 458, y: 130, num: '1' },
-    rib_cover:       { x: 455, y: 235, num: '7' },
-    ribs:            { x: 448, y: 305, num: '2' },
-    asado:           { x: 435, y: 440, num: '9' },
-    sirloin:         { x: 563, y: 130, num: '11' },
-    fillet:          { x: 558, y: 245, num: '12' },
-    flank:           { x: 548, y: 400, num: '17' },
-    shaitel:         { x: 665, y: 130, num: '13' },
-    kaf:             { x: 790, y: 130, num: '16' },
-    avasit:          { x: 660, y: 250, num: '14' },
-    weissbraten:     { x: 790, y: 248, num: '19' },
-    chach:           { x: 735, y: 360, num: '15' },
-    rear_shank:      { x: 730, y: 510, num: '18' },
+    // Left side / front
+    neck:            { x: 152, y: 210, num: '10' }, // moved right+up into visible neck body
+    mock_fillet:     { x: 272, y: 120, num: '6'  },
+    shoulder_roast:  { x: 355, y: 138, num: '5'  },
+    shoulder_center: { x: 308, y: 248, num: '4'  },
+    brisket:         { x: 295, y: 355, num: '3'  },
+    front_shank:     { x: 308, y: 460, num: '8'  }, // front leg visible x≈275-355, y≈430-570
+    // Middle
+    entrecote:       { x: 458, y: 158, num: '1'  },
+    rib_cover:       { x: 453, y: 233, num: '7'  },
+    ribs:            { x: 448, y: 306, num: '2'  },
+    asado:           { x: 432, y: 390, num: '9'  }, // moved up – belly visible only to ~y415
+    // Right-middle
+    sirloin:         { x: 563, y: 158, num: '11' },
+    fillet:          { x: 558, y: 244, num: '12' },
+    flank:           { x: 548, y: 385, num: '17' }, // moved up – same belly clip
+    // Right
+    shaitel:         { x: 663, y: 158, num: '13' },
+    kaf:             { x: 790, y: 163, num: '16' },
+    avasit:          { x: 658, y: 246, num: '14' },
+    weissbraten:     { x: 786, y: 246, num: '19' },
+    chach:           { x: 728, y: 350, num: '15' },
+    rear_shank:      { x: 758, y: 478, num: '18' }, // rear leg visible x≈725-800, y≈420-575
   };
 
   return (

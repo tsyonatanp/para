@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Users } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { useRoundStore } from '../stores/roundStore';
 import { useCartStore } from '../stores/cartStore';
 import { MeatPart } from '../types';
@@ -12,30 +12,15 @@ import PartTooltip from '../features/cow/PartTooltip';
 import PartModal from '../features/order/PartModal';
 
 const CowPage: React.FC = () => {
-  const { parts, simulatePurchase } = useRoundStore();
+  const { parts } = useRoundStore();
   const cartItems = useCartStore(s => s.items);
   const [selectedPart, setSelectedPart] = useState<MeatPart | null>(null);
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [pulsingPartId, setPulsingPartId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'available' | 'popular' | 'cheap'>('all');
   const [showMobileList, setShowMobileList] = useState(false);
-  const [viewersCount] = useState(Math.floor(Math.random() * 6) + 3);
 
   const cartPartIds = new Set(cartItems.map(i => i.partId));
-
-  // Simulate real-time purchases
-  useEffect(() => {
-    const id = setInterval(() => {
-      const eligibleParts = parts.filter(p => getPartAvailability(p) > 5);
-      if (eligibleParts.length === 0) return;
-      const rp = eligibleParts[Math.floor(Math.random() * eligibleParts.length)];
-      setPulsingPartId(rp.id);
-      simulatePurchase();
-      setTimeout(() => setPulsingPartId(null), 2000);
-    }, 15000);
-    return () => clearInterval(id);
-  }, [parts]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
@@ -54,11 +39,6 @@ const CowPage: React.FC = () => {
       <div className="cow-top-bar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link to="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 13 }}>← חזור</Link>
-          <span style={{ color: '#4b5563' }}>|</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#94a3b8' }}>
-            <Users size={14} />
-            <span>{viewersCount} צופים כרגע</span>
-          </div>
         </div>
         <div className="desktop-only" style={{ fontSize: 13, color: '#94a3b8' }}>
           לחץ על חלק בפרה לבחירה
@@ -69,24 +49,6 @@ const CowPage: React.FC = () => {
       <div className="cow-page-layout">
         {/* SVG area */}
         <div style={{ minWidth: 0 }}>
-          {/* FOMO ticker */}
-          {pulsingPartId && (
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              style={{
-                marginBottom: 12, padding: '8px 14px',
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                borderRadius: 8, fontSize: 13, color: '#fca5a5',
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}
-            >
-              🔴 מישהו הזמין כרגע מהמלאי!
-            </motion.div>
-          )}
-
           {/* Legend */}
           <div className="cow-legend">
             {[
@@ -110,7 +72,7 @@ const CowPage: React.FC = () => {
             hoveredPartId={hoveredPartId}
             onPartClick={handlePartClick}
             onPartHover={setHoveredPartId}
-            pulsingPartId={pulsingPartId}
+            pulsingPartId={null}
           />
 
           {/* Mobile list toggle */}

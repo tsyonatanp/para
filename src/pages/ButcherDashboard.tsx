@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, Plus, ChevronDown, ShieldOff } from 'lucide-react';
+import { Download, Plus, ChevronDown, ShieldOff, Pencil, Check, X } from 'lucide-react';
 import { useRoundStore } from '../stores/roundStore';
 import { useOrderStore } from '../stores/orderStore';
 import { useAuthStore } from '../stores/authStore';
@@ -53,10 +53,30 @@ const ButcherDashboard: React.FC = () => {
     );
   }
 
-  const { round, parts } = useRoundStore();
+  const { round, parts, updatePart } = useRoundStore();
   const { orders, setOrderStatus } = useOrderStore();
   const stats = getRoundStats(parts);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editTotalKg, setEditTotalKg] = useState('');
+
+  const startEdit = (partId: string, price: number, totalKg: number) => {
+    setEditingPartId(partId);
+    setEditPrice(price.toString());
+    setEditTotalKg(totalKg.toString());
+  };
+
+  const saveEdit = (partId: string) => {
+    const price = parseFloat(editPrice);
+    const kg = parseFloat(editTotalKg);
+    if (!isNaN(price) && price > 0 && !isNaN(kg) && kg > 0) {
+      updatePart(partId, { pricePerKg: price, totalKg: kg });
+    }
+    setEditingPartId(null);
+  };
+
+  const cancelEdit = () => setEditingPartId(null);
 
   const expectedRevenue = stats.expectedRevenue;
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
@@ -131,12 +151,13 @@ const ButcherDashboard: React.FC = () => {
               const avail = getPartAvailability(part);
               const available = Math.max(0, part.totalKg - part.soldKg - part.bufferKg);
               const soldPct = (part.soldKg / part.totalKg) * 100;
+              const isEditing = editingPartId === part.id;
 
               return (
-                <div key={part.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div key={part.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 36 }}>
                   <span style={{ width: 20, textAlign: 'center', fontSize: 16 }}>{part.emoji}</span>
-                  <div style={{ width: 80, fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{part.nameHe}</div>
-                  <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 999 }}>
+                  <div style={{ width: 80, fontSize: 13, fontWeight: 600, color: '#f1f5f9', flexShrink: 0 }}>{part.nameHe}</div>
+                  <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 999, minWidth: 60 }}>
                     <div style={{
                       height: '100%', borderRadius: 999,
                       width: `${Math.min(soldPct, 100)}%`,
@@ -144,16 +165,71 @@ const ButcherDashboard: React.FC = () => {
                       transition: 'width 0.5s',
                     }} />
                   </div>
-                  <div style={{ width: 65, fontSize: 12, color: '#94a3b8', textAlign: 'left' as const }}>
+                  <div style={{ width: 60, fontSize: 12, color: '#94a3b8', textAlign: 'left' as const, flexShrink: 0 }}>
                     {available.toFixed(1)} ק"ג
                   </div>
-                  <div style={{
-                    width: 50, fontSize: 12, fontWeight: 700,
-                    color: avail <= 0 ? '#6b7280' : '#f1f5f9',
-                    textAlign: 'left' as const,
-                  }}>
-                    {part.pricePerKg}₪
-                  </div>
+
+                  {isEditing ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          type="number"
+                          value={editTotalKg}
+                          onChange={e => setEditTotalKg(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && saveEdit(part.id)}
+                          style={{
+                            width: 58, background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(139,92,246,0.4)', borderRadius: 6,
+                            color: '#f1f5f9', fontSize: 12, padding: '3px 6px',
+                            fontFamily: 'Heebo, sans-serif', outline: 'none',
+                          }}
+                          placeholder="ק״ג"
+                          autoFocus
+                        />
+                        <span style={{ fontSize: 10, color: '#6b7280' }}>ק"ג</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          type="number"
+                          value={editPrice}
+                          onChange={e => setEditPrice(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && saveEdit(part.id)}
+                          style={{
+                            width: 50, background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(139,92,246,0.4)', borderRadius: 6,
+                            color: '#f1f5f9', fontSize: 12, padding: '3px 6px',
+                            fontFamily: 'Heebo, sans-serif', outline: 'none',
+                          }}
+                          placeholder="₪"
+                        />
+                        <span style={{ fontSize: 10, color: '#6b7280' }}>₪/ק"ג</span>
+                      </div>
+                      <button
+                        onClick={() => saveEdit(part.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#22c55e', padding: 2, display: 'flex' }}
+                      ><Check size={14} /></button>
+                      <button
+                        onClick={cancelEdit}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 2, display: 'flex' }}
+                      ><X size={14} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ width: 50, fontSize: 12, fontWeight: 700, color: avail <= 0 ? '#6b7280' : '#f1f5f9', textAlign: 'left' as const, flexShrink: 0 }}>
+                        {part.totalKg} ק"ג
+                      </div>
+                      <div style={{ width: 44, fontSize: 12, fontWeight: 700, color: avail <= 0 ? '#6b7280' : '#a78bfa', textAlign: 'left' as const, flexShrink: 0 }}>
+                        {part.pricePerKg}₪
+                      </div>
+                      <button
+                        onClick={() => startEdit(part.id, part.pricePerKg, part.totalKg)}
+                        title="ערוך מחיר וכמות"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4b5563', padding: 2, display: 'flex', flexShrink: 0 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#8b5cf6')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#4b5563')}
+                      ><Pencil size={13} /></button>
+                    </>
+                  )}
                 </div>
               );
             })}
