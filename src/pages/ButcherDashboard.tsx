@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, Plus, ChevronDown } from 'lucide-react';
+import { Download, Plus, ChevronDown, ShieldOff } from 'lucide-react';
 import { useRoundStore } from '../stores/roundStore';
 import { useOrderStore } from '../stores/orderStore';
+import { useAuthStore } from '../stores/authStore';
 import { getRoundStats, getPartAvailability } from '../data/mockData';
 import { Order, OrderStatus } from '../types';
 import CountdownTimer from '../components/CountdownTimer';
@@ -25,6 +26,33 @@ const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
 };
 
 const ButcherDashboard: React.FC = () => {
+  const canAccess = useAuthStore(s => s.canAccessDashboard());
+  const user = useAuthStore(s => s.user);
+
+  // Route guard: only butcher or admin role can access
+  if (!user || !canAccess) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24,
+        textAlign: 'center',
+      }}>
+        <ShieldOff size={64} color="#ef4444" />
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>אין גישה</h2>
+        <p style={{ color: '#94a3b8', maxWidth: 300 }}>
+          הדף הזה פתוח רק לשוחטים מורשים. אם אתה שוחט – התחבר עם מספר הטלפון המורשה.
+        </p>
+        <Link to="/" style={{
+          background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+          color: 'white', padding: '10px 24px', borderRadius: 10,
+          textDecoration: 'none', fontWeight: 700, fontSize: 14,
+        }}>
+          ← חזור לחנות
+        </Link>
+      </div>
+    );
+  }
+
   const { round, parts } = useRoundStore();
   const { orders, setOrderStatus } = useOrderStore();
   const stats = getRoundStats(parts);

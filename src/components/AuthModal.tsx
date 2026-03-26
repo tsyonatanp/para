@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, User, ArrowLeft, Loader2, Shield } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
+import { X, Phone, User, ArrowLeft, Loader2, Shield, Lock, Eye, EyeOff } from 'lucide-react';
+import { useAuthStore, UserRole } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 
 interface AuthModalProps {
@@ -9,59 +9,86 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
-  const { otpSent, isLoading, mockLogin, sendOtp, verifyOtp, setName } = useAuthStore();
+  const { isLoading, loginWithPassword, loginAsCustomer } = useAuthStore();
   const addToast = useToastStore(s => s.addToast);
 
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setNameInput] = useState('');
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'name'>('phone');
+  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<'phone' | 'password' | 'name'>('phone');
+  const [detectedRole, setDetectedRole] = useState<UserRole>('customer');
+  const [loginError, setLoginError] = useState('');
 
-  const handleSendOtp = async () => {
-    if (phone.trim().length < 9) {
+  // Detect role on phone change
+  const handlePhoneContinue = () => {
+    const trimmed = phone.trim();
+    if (trimmed.replace(/[-\s()]/g, '').length < 9) {
       addToast({ message: 'נא להזין מספר טלפון תקין', type: 'warning', emoji: '📱' });
       return;
     }
-    const success = await sendOtp(phone.trim());
-    if (success) {
-      setStep('otp');
-      addToast({ message: 'קוד אימות נשלח ל-' + phone, type: 'success', emoji: '📨' });
+
+    const role = useAuthStore.getState().getPhoneRole(trimmed);
+    setDetectedRole(role);
+    setLoginError('');
+
+    if (role === 'admin' || role === 'butcher') {
+      // Known user – needs password
+      setStep('password');
     } else {
-      addToast({ message: 'שגיאה בשליחת קוד, נסה שוב', type: 'error' });
+      // Customer – needs name
+      setStep('name');
     }
   };
 
-  const handleVerifyOtp = async () => {
-    if (otp.length < 4) {
-      addToast({ message: 'נא להזין קוד אימות בן 4 ספרות', type: 'warning' });
+  const handlePasswordLogin = () => {
+    if (password.length < 1) {
+      setLoginError('נא להזין סיסמה');
       return;
     }
-    const success = await verifyOtp(phone.trim(), otp);
+
+    const success = loginWithPassword(phone.trim(), password);
     if (success) {
-      setStep('name');
+      const roleName = detectedRole === 'admin' ? 'מנהל מערכת' : 'שוחט';
+      addToast({ message: `ברוך הבא, ${roleName}! 🎉`, type: 'success' });
+      onClose();
     } else {
-      addToast({ message: 'קוד שגוי, נסה שוב', type: 'error', emoji: '❌' });
+      setLoginError('סיסמה שגויה');
+      setPassword('');
     }
   };
 
-  const handleSetName = () => {
+  const handleCustomerLogin = () => {
     if (name.trim().length < 2) {
       addToast({ message: 'נא להזין שם מלא', type: 'warning' });
       return;
     }
-    setName(name.trim());
-    mockLogin(phone.trim(), name.trim());
+    loginAsCustomer(phone.trim(), name.trim());
     addToast({ message: `ברוך הבא, ${name.trim()}! 🎉`, type: 'success' });
     onClose();
   };
 
-  // Quick mock login (skip OTP)
-  const handleQuickLogin = () => {
-    if (phone.trim().length < 9) {
-      addToast({ message: 'נא להזין מספר טלפון', type: 'warning', emoji: '📱' });
-      return;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      if (step === 'phone') handlePhoneContinue();
+      else if (step === 'password') handlePasswordLogin();
+      else if (step === 'name') handleCustomerLogin();
     }
-    setStep('name');
+  };
+
+  const getRoleLabel = () => {
+    if (detectedRole === 'admin') return '🔑 מנהל מערכת';
+    if (detectedRole === 'butcher') {
+      const butcher = useAuthStore.getState().findButcher(phone.trim());
+      return `🔪 שוחט${butcher?.name ? ` – ${butcher.name}` : ''}`;
+    }
+    return '👤 לקוח';
+  };
+
+  const getRoleColor = () => {
+    if (detectedRole === 'admin') return '#f97316';
+    if (detectedRole === 'butcher') return '#22c55e';
+    return '#8b5cf6';
   };
 
   return (
@@ -84,6 +111,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={e => e.stopPropagation()}
+          onKeyDown={handleKeyDown}
           style={{
             background: '#16161f',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -98,7 +126,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {step !== 'phone' && (
                 <button
-                  onClick={() => setStep(step === 'name' ? 'phone' : 'phone')}
+                  onClick={() => { setStep('phone'); setLoginError(''); setPassword(''); }}
                   style={{
                     background: 'none', border: 'none', color: '#94a3b8',
                     cursor: 'pointer', display: 'flex', padding: 4,
@@ -106,7 +134,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 ><ArrowLeft size={18} /></button>
               )}
               <h2 style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
-                {step === 'phone' ? '🔐 התחברות' : step === 'otp' ? '📨 קוד אימות' : '👤 מי אתם?'}
+                {step === 'phone' ? '🔐 התחברות' : step === 'password' ? '🔑 הזדהות' : '👤 מי אתם?'}
               </h2>
             </div>
             <button
@@ -127,7 +155,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
               <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                הזינו את מספר הטלפון שלכם כדי לצפות בהזמנות קודמות ולהזמין מהר יותר.
+                הזינו את מספר הטלפון שלכם כדי להתחבר.
               </p>
               <div>
                 <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
@@ -145,7 +173,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 />
               </div>
               <button
-                onClick={handleQuickLogin}
+                onClick={handlePhoneContinue}
                 disabled={isLoading}
                 style={{
                   width: '100%', padding: '14px',
@@ -157,8 +185,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                   boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
                 }}
               >
-                {isLoading ? <Loader2 size={18} className="spin" /> : <Shield size={18} />}
-                {isLoading ? 'שולח...' : 'המשך'}
+                <Shield size={18} />
+                המשך
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
@@ -168,45 +196,97 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             </motion.div>
           )}
 
-          {/* Step: OTP */}
-          {step === 'otp' && (
+          {/* Step: Password (admin/butcher) */}
+          {step === 'password' && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
+              {/* Role badge */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px', borderRadius: 12,
+                background: `${getRoleColor()}15`,
+                border: `1px solid ${getRoleColor()}30`,
+              }}>
+                <span style={{ fontSize: 13, color: getRoleColor(), fontWeight: 700 }}>
+                  {getRoleLabel()}
+                </span>
+              </div>
+
               <p style={{ color: '#94a3b8', fontSize: 14, margin: 0 }}>
-                שלחנו קוד אימות ל-<strong style={{ color: '#c4b5fd' }}>{phone}</strong>
+                הזינו את הסיסמה כדי להתחבר.
               </p>
-              <input
-                className="input-field"
-                type="text"
-                dir="ltr"
-                placeholder="1234"
-                value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                style={{ textAlign: 'center', fontSize: 28, fontWeight: 800, letterSpacing: 8 }}
-                autoFocus
-                maxLength={6}
-              />
+
+              <div style={{ position: 'relative' }}>
+                <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
+                  <Lock size={14} style={{ display: 'inline', marginLeft: 4 }} /> סיסמה
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="input-field"
+                    type={showPassword ? 'text' : 'password'}
+                    dir="ltr"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => { setPassword(e.target.value); setLoginError(''); }}
+                    style={{
+                      textAlign: 'right', fontSize: 18, fontWeight: 600,
+                      paddingLeft: 44,
+                      borderColor: loginError ? '#ef4444' : undefined,
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => setShowPassword(!showPassword)}
+                    type="button"
+                    style={{
+                      position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', color: '#6b7280',
+                      cursor: 'pointer', display: 'flex', padding: 2,
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error message */}
+              {loginError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    color: '#ef4444', fontSize: 13, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 12px', borderRadius: 8,
+                    background: 'rgba(239,68,68,0.1)',
+                  }}
+                >
+                  ❌ {loginError}
+                </motion.div>
+              )}
+
               <button
-                onClick={handleVerifyOtp}
-                disabled={isLoading}
+                onClick={handlePasswordLogin}
                 style={{
                   width: '100%', padding: '14px',
-                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  background: `linear-gradient(135deg, ${getRoleColor()}, ${getRoleColor()}cc)`,
                   border: 'none', borderRadius: 12,
                   color: 'white', fontWeight: 700, fontSize: 16,
                   cursor: 'pointer', fontFamily: 'Heebo, sans-serif',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  boxShadow: `0 4px 20px ${getRoleColor()}50`,
                 }}
               >
-                {isLoading ? 'מאמת...' : 'אימות קוד'}
+                <Lock size={18} />
+                התחבר
               </button>
             </motion.div>
           )}
 
-          {/* Step: Name */}
+          {/* Step: Name (customer) */}
           {step === 'name' && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -230,7 +310,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 />
               </div>
               <button
-                onClick={handleSetName}
+                onClick={handleCustomerLogin}
                 style={{
                   width: '100%', padding: '14px',
                   background: 'linear-gradient(135deg, #22c55e, #16a34a)',

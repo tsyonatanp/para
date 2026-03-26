@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AnimalType } from '../types';
 import { MOCK_PARTS } from '../data/mockData';
+import { useAuthStore } from '../stores/authStore';
 
 const ANIMAL_EMOJI: Record<AnimalType, string> = {
   cow: '🐄', calf: '🐂', lamb: '🐑', chicken: '🐓',
@@ -30,6 +31,9 @@ const DEFAULT_PRICES: Record<string, number> = {
 };
 
 const CreateRoundPage: React.FC = () => {
+  const isButcher = useAuthStore(s => s.isButcher());
+  if (!isButcher) return <Navigate to="/" replace />;
+
   const [animal, setAnimal] = useState<AnimalType>('cow');
   const [slaughterDate, setSlaughterDate] = useState('2026-03-20');
   const [closeDate, setCloseDate] = useState('2026-03-19');

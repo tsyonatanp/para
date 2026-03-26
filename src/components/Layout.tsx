@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, BarChart2, Menu, X, ClipboardList, LogOut, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Menu, X, ClipboardList, LogOut, User, Shield, Settings } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -9,10 +9,19 @@ import AuthModal from './AuthModal';
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const items = useCartStore(s => s.items);
   const { user, logout } = useAuthStore();
+  const canAccessDashboard = useAuthStore(s => s.canAccessDashboard());
+  const isAdminUser = useAuthStore(s => s.isAdmin());
   const location = useLocation();
-  const isButcher = location.pathname.startsWith('/butcher');
+  const navigate = useNavigate();
+  const isButcherPage = location.pathname.startsWith('/butcher');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    if (isButcherPage) navigate('/');
+    setMobileMenuOpen(false);
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0a0a0f' }}>
@@ -40,7 +49,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Desktop nav links */}
         <div className="nav-links desktop-only">
-          {!isButcher && (
+          {!isButcherPage && (
             <>
               <Link
                 to="/cow"
@@ -68,31 +77,60 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </>
           )}
 
-          <Link
-            to={isButcher ? '/' : '/butcher'}
-            style={{
-              color: '#94a3b8', textDecoration: 'none', fontSize: 14,
-              padding: '6px 12px', borderRadius: 8,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            <BarChart2 size={15} />
-            {isButcher ? 'לקוח' : 'שוחט'}
-          </Link>
+          {/* Butcher dashboard – for admin or butcher role */}
+          {canAccessDashboard && (
+            <Link
+              to={isButcherPage ? '/' : '/butcher'}
+              style={{
+                color: isButcherPage ? '#f97316' : '#94a3b8',
+                textDecoration: 'none', fontSize: 14,
+                padding: '6px 12px', borderRadius: 8,
+                background: isButcherPage ? 'rgba(249,115,22,0.1)' : 'transparent',
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontWeight: 600,
+              }}
+            >
+              <Shield size={15} />
+              {isButcherPage ? '← חזור לחנות' : 'ניהול'}
+            </Link>
+          )}
+
+          {/* Admin panel – only for super admin */}
+          {isAdminUser && (
+            <Link
+              to="/admin"
+              style={{
+                color: location.pathname === '/admin' ? '#f97316' : '#94a3b8',
+                textDecoration: 'none', fontSize: 14,
+                padding: '6px 12px', borderRadius: 8,
+                background: location.pathname === '/admin' ? 'rgba(249,115,22,0.1)' : 'transparent',
+                display: 'flex', alignItems: 'center', gap: 6,
+                fontWeight: 600,
+              }}
+            >
+              <Settings size={15} />
+              מנהל
+            </Link>
+          )}
 
           {/* Auth button / User info */}
           {user ? (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(139,92,246,0.1)',
-              border: '1px solid rgba(139,92,246,0.2)',
+              background: isAdminUser ? 'rgba(249,115,22,0.1)' : canAccessDashboard ? 'rgba(34,197,94,0.1)' : 'rgba(139,92,246,0.1)',
+              border: `1px solid ${isAdminUser ? 'rgba(249,115,22,0.2)' : canAccessDashboard ? 'rgba(34,197,94,0.2)' : 'rgba(139,92,246,0.2)'}`,
               borderRadius: 10, padding: '6px 12px',
             }}>
-              <span style={{ fontSize: 13, color: '#c4b5fd', fontWeight: 600 }}>
+              {isAdminUser && (
+                <span style={{ fontSize: 10, background: '#f97316', color: 'white', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+                  ADMIN
+                </span>
+              )}
+              <span style={{ fontSize: 13, color: isAdminUser ? '#fdba74' : canAccessDashboard ? '#86efac' : '#c4b5fd', fontWeight: 600 }}>
                 👤 {user.name || user.phone}
               </span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 style={{
                   background: 'none', border: 'none', color: '#6b7280',
                   cursor: 'pointer', display: 'flex', padding: 2,
@@ -120,7 +158,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </button>
           )}
 
-          {!isButcher && (
+          {!isButcherPage && (
             <Link
               to="/cart"
               style={{
@@ -149,7 +187,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Mobile: cart icon + hamburger */}
         <div className="mobile-only" style={{ gap: 8, alignItems: 'center' }}>
-          {!isButcher && (
+          {!isButcherPage && (
             <Link
               to="/cart"
               style={{
@@ -202,7 +240,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             }}
           >
             <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {!isButcher && (
+              {!isButcherPage && (
                 <>
                   <Link
                     to="/cow"
@@ -230,32 +268,67 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </>
               )}
 
-              <Link
-                to={isButcher ? '/' : '/butcher'}
-                onClick={() => setMobileMenuOpen(false)}
-                style={{
-                  color: '#94a3b8', textDecoration: 'none', fontSize: 15,
-                  padding: '10px 12px', borderRadius: 10,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}
-              >
-                <BarChart2 size={16} />
-                {isButcher ? 'מצב לקוח' : 'דשבורד שוחט'}
-              </Link>
+              {/* Dashboard link – mobile (admin or butcher) */}
+              {canAccessDashboard && (
+                <Link
+                  to={isButcherPage ? '/' : '/butcher'}
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    color: isButcherPage ? '#f97316' : '#94a3b8',
+                    textDecoration: 'none', fontSize: 15, fontWeight: 600,
+                    padding: '10px 12px', borderRadius: 10,
+                    background: isButcherPage ? 'rgba(249,115,22,0.1)' : 'transparent',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                >
+                  <Shield size={16} />
+                  {isButcherPage ? '← חזור לחנות' : '🔧 ניהול'}
+                </Link>
+              )}
+
+              {/* Admin panel – mobile (admin only) */}
+              {isAdminUser && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{
+                    color: '#f97316',
+                    textDecoration: 'none', fontSize: 15, fontWeight: 600,
+                    padding: '10px 12px', borderRadius: 10,
+                    background: location.pathname === '/admin' ? 'rgba(249,115,22,0.1)' : 'transparent',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}
+                >
+                  <Settings size={16} />
+                  ⚙️ ניהול מערכת
+                </Link>
+              )}
 
               {/* Auth in mobile */}
               {user ? (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '10px 12px', borderRadius: 10,
-                  background: 'rgba(139,92,246,0.08)',
+                  background: isAdminUser ? 'rgba(249,115,22,0.08)' : canAccessDashboard ? 'rgba(34,197,94,0.08)' : 'rgba(139,92,246,0.08)',
                   marginTop: 4,
                 }}>
-                  <span style={{ fontSize: 14, color: '#c4b5fd', fontWeight: 600 }}>
-                    👤 {user.name || user.phone}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isAdminUser && (
+                      <span style={{ fontSize: 10, background: '#f97316', color: 'white', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+                        ADMIN
+                      </span>
+                    )}
+                    {canAccessDashboard && !isAdminUser && (
+                      <span style={{ fontSize: 10, background: '#22c55e', color: 'white', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+                        שוחט
+                      </span>
+                    )}
+                    <span style={{ fontSize: 14, color: isAdminUser ? '#fdba74' : canAccessDashboard ? '#86efac' : '#c4b5fd', fontWeight: 600 }}>
+                      👤 {user.name || user.phone}
+                    </span>
+                  </div>
                   <button
-                    onClick={() => { logout(); setMobileMenuOpen(false); }}
+                    onClick={handleLogout}
                     style={{
                       background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
                       borderRadius: 8, padding: '4px 10px',
@@ -284,7 +357,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </button>
               )}
 
-              {!isButcher && (
+              {!isButcherPage && (
                 <Link
                   to="/cart"
                   onClick={() => setMobileMenuOpen(false)}
@@ -319,7 +392,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         color: '#4b5563',
         fontSize: 12,
       }}>
-        © 2026 FreshCut · בשר טרי לפי הזמנה · קשר: 050-0000000
+        © 2026 FreshCut · בשר טרי לפי הזמנה · קשר: 054-7274527
       </footer>
     </div>
   );

@@ -7,6 +7,7 @@ import CartPage from './pages/CartPage';
 import ButcherDashboard from './pages/ButcherDashboard';
 import CreateRoundPage from './pages/CreateRoundPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
+import AdminPage from './pages/AdminPage';
 import ToastContainer from './components/Toast';
 import { useRoundStore } from './stores/roundStore';
 
@@ -28,6 +29,7 @@ function App() {
           <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/butcher" element={<ButcherDashboard />} />
           <Route path="/butcher/create" element={<CreateRoundPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>
