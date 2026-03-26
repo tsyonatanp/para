@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, UserPlus, Trash2, Phone, ArrowRight, Users, Lock, Eye, EyeOff, Copy, Check } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Phone, ArrowRight, Users, Lock, Eye, EyeOff, Copy, Check, MapPin, Calendar } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 
 const AdminPage: React.FC = () => {
   const isAdmin = useAuthStore(s => s.isAdmin());
   const butchers = useAuthStore(s => s.butchers);
+  const customers = useAuthStore(s => s.customers || []);
   const addButcher = useAuthStore(s => s.addButcher);
   const removeButcher = useAuthStore(s => s.removeButcher);
   const addToast = useToastStore(s => s.addToast);
@@ -314,6 +315,78 @@ const AdminPage: React.FC = () => {
                       >
                         {showPasswords[butcher.phone] ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+
+        {/* Customer list */}
+        <div style={{
+          background: '#16161f',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 16, padding: 20,
+          marginTop: 20,
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={18} color="#8b5cf6" />
+            לקוחות רשומים
+            <span style={{
+              background: 'rgba(139,92,246,0.15)', color: '#c4b5fd',
+              padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
+            }}>
+              {customers.length}
+            </span>
+          </h3>
+
+          {customers.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '32px 16px',
+              color: '#4b5563', fontSize: 14,
+            }}>
+              <Users size={36} color="#374151" style={{ marginBottom: 8 }} />
+              <p>אין לקוחות רשומים במערכת עדיין</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <AnimatePresence>
+                {[...customers].sort((a,b) => b.registeredAt - a.registeredAt).map((customer, idx) => (
+                  <motion.div
+                    key={customer.phone}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    style={{
+                      padding: '14px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.04)',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                    }}
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: 'rgba(139,92,246,0.1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, color: '#c4b5fd', flexShrink: 0,
+                    }}>
+                      👤
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {customer.name}
+                        {customer.city && (
+                          <span style={{ fontSize: 11, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <MapPin size={10} /> {customer.city}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12, marginTop: 4 }}>
+                         <span style={{ direction: 'ltr' }}>📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}</span>
+                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={10} /> {new Date(customer.registeredAt).toLocaleDateString('he-IL')}</span>
+                      </div>
                     </div>
                   </motion.div>
                 ))}

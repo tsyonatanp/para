@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, ClipboardList, LogOut, User, Shield, Settings } from 'lucide-react';
+import { ShoppingCart, Menu, X, ClipboardList, LogOut, User, Shield, Settings, Sparkles } from 'lucide-react';
 import { useCartStore } from '../stores/cartStore';
 import { useAuthStore } from '../stores/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -141,21 +141,38 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setShowAuth(true)}
-              style={{
-                background: 'rgba(139,92,246,0.15)',
-                border: '1px solid rgba(139,92,246,0.3)',
-                borderRadius: 10, padding: '6px 14px',
-                color: '#c4b5fd', cursor: 'pointer',
-                fontWeight: 600, fontSize: 13,
-                fontFamily: 'Heebo, sans-serif',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <User size={14} />
-              התחבר
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Link
+                to="/register"
+                style={{
+                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  border: 'none', borderRadius: 10, padding: '6px 14px',
+                  color: 'white', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 13,
+                  textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  boxShadow: '0 2px 12px rgba(34,197,94,0.3)',
+                }}
+              >
+                <Sparkles size={14} />
+                הירשמו
+              </Link>
+              <button
+                onClick={() => setShowAuth(true)}
+                style={{
+                  background: 'rgba(139,92,246,0.15)',
+                  border: '1px solid rgba(139,92,246,0.3)',
+                  borderRadius: 10, padding: '6px 14px',
+                  color: '#c4b5fd', cursor: 'pointer',
+                  fontWeight: 600, fontSize: 13,
+                  fontFamily: 'Heebo, sans-serif',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                <User size={14} />
+                התחבר
+              </button>
+            </div>
           )}
 
           {!isButcherPage && (
@@ -340,21 +357,39 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }}
-                  style={{
-                    padding: '10px 12px', borderRadius: 10,
-                    background: 'rgba(139,92,246,0.1)',
-                    border: '1px solid rgba(139,92,246,0.2)',
-                    color: '#c4b5fd', cursor: 'pointer',
-                    fontSize: 15, fontWeight: 600,
-                    fontFamily: 'Heebo, sans-serif',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    marginTop: 4, width: '100%',
-                  }}
-                >
-                  🔐 התחבר
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    style={{
+                      padding: '12px', borderRadius: 10,
+                      background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                      color: 'white', cursor: 'pointer',
+                      fontSize: 15, fontWeight: 700,
+                      textDecoration: 'none', textAlign: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 2px 12px rgba(34,197,94,0.3)',
+                    }}
+                  >
+                    <Sparkles size={16} />
+                    הירשמו עכשיו
+                  </Link>
+                  <button
+                    onClick={() => { setShowAuth(true); setMobileMenuOpen(false); }}
+                    style={{
+                      padding: '10px 12px', borderRadius: 10,
+                      background: 'rgba(139,92,246,0.1)',
+                      border: '1px solid rgba(139,92,246,0.2)',
+                      color: '#c4b5fd', cursor: 'pointer',
+                      fontSize: 15, fontWeight: 600,
+                      fontFamily: 'Heebo, sans-serif',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      width: '100%',
+                    }}
+                  >
+                    🔐 כבר יש לי חשבון
+                  </button>
+                </div>
               )}
 
               {!isButcherPage && (

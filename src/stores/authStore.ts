@@ -18,6 +18,13 @@ export interface ButcherEntry {
   addedAt: number;
 }
 
+export interface CustomerEntry {
+  phone: string;
+  name: string;
+  city?: string;
+  registeredAt: number;
+}
+
 // Admin credentials
 const ADMIN_PHONE = '0547274527';
 const ADMIN_PASSWORD = 'Para2026!'; // Change this in production
@@ -37,6 +44,9 @@ interface AuthStore {
 
   // Managed butcher list (persisted)
   butchers: ButcherEntry[];
+  
+  // Registered customers list (persisted)
+  customers: CustomerEntry[];
 
   // Computed helpers
   isLoggedIn: () => boolean;
@@ -54,7 +64,7 @@ interface AuthStore {
 
   // Auth
   loginWithPassword: (phone: string, password: string) => boolean;
-  loginAsCustomer: (phone: string, name: string) => void;
+  loginAsCustomer: (phone: string, name: string, city?: string) => void;
   sendOtp: (phone: string) => Promise<boolean>;
   verifyOtp: (phone: string, otp: string) => Promise<boolean>;
   setName: (name: string) => void;
@@ -68,6 +78,7 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       otpSent: false,
       butchers: [],
+      customers: [],
 
       isLoggedIn: () => get().user !== null,
       isAdmin: () => get().user?.role === 'admin',
@@ -132,9 +143,20 @@ export const useAuthStore = create<AuthStore>()(
         return false;
       },
 
-      loginAsCustomer: (phone, name) => {
+      loginAsCustomer: (phone, name, city) => {
+        const normalized = normalizePhone(phone);
+        
+        // Add to customers list if not exists
+        set(state => {
+          const exists = state.customers.some(c => c.phone === normalized);
+          if (exists) return state;
+          return {
+            customers: [...state.customers, { phone: normalized, name, city, registeredAt: Date.now() }],
+          };
+        });
+
         set({
-          user: { id: `cust-${Date.now()}`, phone, name, role: 'customer' },
+          user: { id: `cust-${Date.now()}`, phone: normalized, name, role: 'customer' },
           otpSent: false,
         });
       },
@@ -212,6 +234,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         user: state.user,
         butchers: state.butchers,
+        customers: state.customers,
       }),
     }
   )
