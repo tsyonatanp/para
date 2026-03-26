@@ -23,12 +23,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   // Detect role on phone change
   const handlePhoneContinue = () => {
     const trimmed = phone.trim();
-    if (trimmed.replace(/[-\s()]/g, '').length < 9) {
+    const cleanPhone = trimmed.replace(/[-\s()]/g, '');
+    if (cleanPhone.length < 9) {
       addToast({ message: 'נא להזין מספר טלפון תקין', type: 'warning', emoji: '📱' });
       return;
     }
 
-    const role = useAuthStore.getState().getPhoneRole(trimmed);
+    const { getPhoneRole, customers } = useAuthStore.getState();
+    const role = getPhoneRole(trimmed);
     setDetectedRole(role);
     setLoginError('');
 
@@ -36,8 +38,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       // Known user – needs password
       setStep('password');
     } else {
-      // Customer – needs name
-      setStep('name');
+      // Customer – check if already registered
+      const existingCustomer = customers?.find(c => c.phone === cleanPhone);
+      if (existingCustomer) {
+        loginAsCustomer(existingCustomer.phone, existingCustomer.name, existingCustomer.city);
+        addToast({ message: `ברוך שובך, ${existingCustomer.name}! 🎉`, type: 'success' });
+        onClose();
+      } else {
+        // New customer – needs name
+        setStep('name');
+      }
     }
   };
 
