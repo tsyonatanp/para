@@ -8,6 +8,8 @@ import { useOrderStore } from '../../stores/orderStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useToastStore } from '../../stores/toastStore';
 import { ProcessingOption } from '../../types';
+import OrderConfirmationDialog from '../../components/OrderConfirmationDialog';
+import DeliveryScheduler from '../../components/DeliveryScheduler';
 
 const PROCESSING_LABELS: Record<ProcessingOption, string> = {
   whole: 'שלם', sliced: 'פרוס', cubed: 'קוביות', ground: 'טחון',
@@ -15,12 +17,15 @@ const PROCESSING_LABELS: Record<ProcessingOption, string> = {
 
 const Cart: React.FC = () => {
   const { items, deliveryType, deliveryAddress, paymentType, removeItem, updateItem, setDeliveryType, setDeliveryAddress, setPaymentType, clearCart } = useCartStore();
+  const roundLocation = useRoundStore(s => s.round?.location || 'ישראל');
   const subtotal = items.reduce((s, i) => s + i.subtotal, 0);
   const deliveryFee = deliveryType === 'delivery' ? 30 : 0;
   const total = subtotal + deliveryFee;
   const depositAmount = Math.ceil(total * 0.3);
   const amountDue = paymentType === 'deposit' ? depositAmount : total;
   const [ordered, setOrdered] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const updatePartSold = useRoundStore(s => s.updatePartSold);
   const addToast = useToastStore(s => s.addToast);
@@ -34,7 +39,10 @@ const Cart: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState(authUser?.phone || '');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  const isFormValid = customerName.trim().length >= 2 && customerPhone.trim().length >= 9;
+  const isFormValid =
+    customerName.trim().length >= 2 &&
+    customerPhone.trim().length >= 9 &&
+    (deliveryType !== 'delivery' || deliveryAddress.trim().length >= 5);
 
   const generateWhatsAppText = () => {
     const itemsList = items.map(i =>
@@ -51,12 +59,16 @@ const Cart: React.FC = () => {
     );
   };
 
-  const handleOrder = async () => {
+  const handleOrder = () => {
     if (!isFormValid) {
       addToast({ message: 'נא למלא שם וטלפון', type: 'warning', emoji: '📝' });
       return;
     }
+    setShowConfirm(true);
+  };
 
+  const handleConfirmOrder = async () => {
+    setIsSubmitting(true);
     const round = useRoundStore.getState().round;
     const { placeOrder } = useOrderStore.getState();
 
@@ -72,6 +84,9 @@ const Cart: React.FC = () => {
       notes: customerNotes.trim() || undefined,
       items,
     });
+
+    setIsSubmitting(false);
+    setShowConfirm(false);
 
     if (order) {
       items.forEach(item => updatePartSold(item.partId, item.kg));
@@ -191,6 +206,7 @@ const Cart: React.FC = () => {
                       }}
                     ><Edit3 size={14} /></button>
                     <button
+                      className="btn-icon-delete"
                       onClick={() => {
                         removeItem(item.partId);
                         addToast({ message: `${item.partEmoji} ${item.partNameHe} הוסר מהסל`, type: 'info', emoji: '🗑️' });
@@ -323,10 +339,16 @@ const Cart: React.FC = () => {
               />
             </div>
             <div>
-              <label className="label">הערות כלליות (אופציונלי)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="label" style={{ margin: 0 }}>הערות כלליות (אופציונלי)</label>
+                <span style={{ fontSize: 11, color: customerNotes.length > 200 ? '#ef4444' : '#6b7280' }}>
+                  {customerNotes.length}/240
+                </span>
+              </div>
               <textarea
                 value={customerNotes}
-                onChange={e => setCustomerNotes(e.target.value)}
+                maxLength={240}
+                onChange={e => setCustomerNotes(e.target.value.slice(0, 240))}
                 placeholder="הערות מיוחדות, אלרגיות, העדפות..."
                 rows={2}
                 style={{
@@ -377,11 +399,12 @@ const Cart: React.FC = () => {
         }}>
           <div style={{ fontWeight: 700, marginBottom: 14, fontSize: 15 }}>🚚 אספקה</div>
           {[
-            { type: 'pickup' as const, label: 'איסוף עצמי (חינם)', sub: '📍 כפר קרע, ישראל' },
+            { type: 'pickup' as const, label: 'איסוף עצמי (חינם)', sub: `📍 ${roundLocation}` },
             { type: 'delivery' as const, label: 'משלוח (+30 ₪)', sub: '🏠 אל הבית' },
           ].map(opt => (
             <div
               key={opt.type}
+              className="radio-option"
               onClick={() => setDeliveryType(opt.type)}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: 10,
@@ -407,13 +430,16 @@ const Cart: React.FC = () => {
             </div>
           ))}
           {deliveryType === 'delivery' && (
-            <input
-              className="input-field"
-              placeholder="הכנס כתובת מלאה..."
-              value={deliveryAddress}
-              onChange={e => setDeliveryAddress(e.target.value)}
-              style={{ marginTop: 4 }}
-            />
+            <>
+              <input
+                className="input-field"
+                placeholder="הכנס כתובת מלאה..."
+                value={deliveryAddress}
+                onChange={e => setDeliveryAddress(e.target.value)}
+                style={{ marginTop: 4 }}
+              />
+              <DeliveryScheduler />
+            </>
           )}
         </div>
 
@@ -458,6 +484,7 @@ const Cart: React.FC = () => {
         {/* CTAs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <motion.button
+            className="btn-cta-green"
             whileTap={{ scale: 0.97 }}
             onClick={handleOrder}
             disabled={!isFormValid}
@@ -504,6 +531,23 @@ const Cart: React.FC = () => {
           תשלום מאובטח · ניתן לביטול עד 48 שעות לפני השחיטה
         </p>
       </div>
+
+      <OrderConfirmationDialog
+        isOpen={showConfirm}
+        items={items}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        deliveryType={deliveryType}
+        deliveryAddress={deliveryAddress}
+        paymentType={paymentType}
+        subtotal={subtotal}
+        deliveryFee={deliveryFee}
+        amountDue={amountDue}
+        customerNotes={customerNotes}
+        onConfirm={handleConfirmOrder}
+        onCancel={() => setShowConfirm(false)}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 };

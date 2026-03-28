@@ -3,6 +3,7 @@ import { SlaughterRound, MeatPart } from '../types';
 import { activeRound, meatParts as mockParts } from '../data/mockData';
 import { fetchActiveRound, subscribeToPartsUpdates } from '../api/rounds';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { Order } from '../api/orders';
 
 interface RoundStore {
   round: SlaughterRound | null;
@@ -22,6 +23,9 @@ interface RoundStore {
 
   // Set parts (used by realtime subscription)
   setParts: (parts: MeatPart[]) => void;
+
+  // Recalculate soldKg from real orders (called after fetchOrders)
+  recalculateSoldKg: (orders: Order[]) => void;
 }
 
 export const useRoundStore = create<RoundStore>((set, get) => ({
@@ -84,4 +88,20 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
   },
 
   setParts: (parts) => set({ parts }),
+
+  recalculateSoldKg: (orders) => {
+    // Sum kg per partId from all non-cancelled active orders
+    const soldByPart: Record<string, number> = {};
+    orders.forEach(order => {
+      (order.items || []).forEach(item => {
+        soldByPart[item.partId] = (soldByPart[item.partId] || 0) + item.kg;
+      });
+    });
+    set(state => ({
+      parts: state.parts.map(p => ({
+        ...p,
+        soldKg: Math.min(p.totalKg - (p.bufferKg || 0), soldByPart[p.id] || p.soldKg),
+      })),
+    }));
+  },
 }));

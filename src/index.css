@@ -556,6 +556,11 @@
   50% { opacity: 0.6; }
 }
 
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .animate-fade-up {
   animation: fade-up 0.4s ease forwards;
 }

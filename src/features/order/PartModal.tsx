@@ -129,6 +129,20 @@ const PartModal: React.FC<PartModalProps> = ({ part, onClose }) => {
           </div>
 
           <div style={{ padding: '20px 20px 0' }}>
+            {/* Almost sold out banner */}
+            {pct < 10 && pct > 0 && (
+              <div style={{
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: 10, padding: '8px 12px',
+                marginBottom: 14,
+                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 13, fontWeight: 700, color: '#ef4444',
+              }}>
+                ⚡ נשאר {available.toFixed(1)} ק"ג בלבד — הזדרז לפני שנגמר!
+              </div>
+            )}
+
             {/* Description */}
             <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.7, marginBottom: 16 }}>
               {part.description}
@@ -251,12 +265,18 @@ const PartModal: React.FC<PartModalProps> = ({ part, onClose }) => {
 
             {/* Notes */}
             <div style={{ marginBottom: 24 }}>
-              <label className="label">הערות (אופציונלי)</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="label" style={{ margin: 0 }}>הערות (אופציונלי)</label>
+                <span style={{ fontSize: 11, color: notes.length > 120 ? '#ef4444' : '#6b7280' }}>
+                  {notes.length}/140
+                </span>
+              </div>
               <textarea
                 value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={e => setNotes(e.target.value.slice(0, 140))}
                 placeholder="פרוס דק, T-bone אם אפשר..."
                 rows={2}
+                maxLength={140}
                 style={{
                   width: '100%', background: '#1c1c28',
                   border: '1px solid rgba(255,255,255,0.08)',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingCart } from 'lucide-react';
@@ -10,17 +10,27 @@ import CowSVG from '../features/cow/CowSVG';
 import PartsList from '../features/cow/PartsList';
 import PartTooltip from '../features/cow/PartTooltip';
 import PartModal from '../features/order/PartModal';
+import { SkeletonPartCard } from '../components/Skeleton';
 
 const CowPage: React.FC = () => {
-  const { parts } = useRoundStore();
+  const { parts, loading } = useRoundStore();
   const cartItems = useCartStore(s => s.items);
   const [selectedPart, setSelectedPart] = useState<MeatPart | null>(null);
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
+  const [pulsingPartId, setPulsingPartId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [filter, setFilter] = useState<'all' | 'available' | 'popular' | 'cheap'>('all');
   const [showMobileList, setShowMobileList] = useState(false);
 
-  const cartPartIds = new Set(cartItems.map(i => i.partId));
+  const cartPartIds = useMemo(() => new Set(cartItems.map(i => i.partId)), [cartItems]);
+
+  const handleModalClose = (partId: string) => {
+    setSelectedPart(null);
+    if (useCartStore.getState().items.some(i => i.partId === partId)) {
+      setPulsingPartId(partId);
+      setTimeout(() => setPulsingPartId(null), 1500);
+    }
+  };
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setMousePos({ x: e.clientX, y: e.clientY });
@@ -30,8 +40,8 @@ const CowPage: React.FC = () => {
     setSelectedPart(part);
   };
 
-  const totalKg = cartItems.reduce((s, i) => s + i.kg, 0);
-  const totalPrice = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalKg = useMemo(() => cartItems.reduce((s, i) => s + i.kg, 0), [cartItems]);
+  const totalPrice = useMemo(() => cartItems.reduce((s, i) => s + i.subtotal, 0), [cartItems]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f' }} onMouseMove={handleMouseMove}>
@@ -72,7 +82,7 @@ const CowPage: React.FC = () => {
             hoveredPartId={hoveredPartId}
             onPartClick={handlePartClick}
             onPartHover={setHoveredPartId}
-            pulsingPartId={null}
+            pulsingPartId={pulsingPartId}
           />
 
           {/* Mobile list toggle */}
@@ -110,15 +120,21 @@ const CowPage: React.FC = () => {
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 14, color: '#f1f5f9' }}>
             🥩 כל החלקים
           </div>
-          <PartsList
-            parts={parts}
-            selectedPartId={null}
-            cartPartIds={cartPartIds}
-            filter={filter}
-            onFilterChange={setFilter}
-            onPartClick={handlePartClick}
-            onPartHover={setHoveredPartId}
-          />
+          {loading && parts.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {Array.from({ length: 6 }).map((_, i) => <SkeletonPartCard key={i} />)}
+            </div>
+          ) : (
+            <PartsList
+              parts={parts}
+              selectedPartId={null}
+              cartPartIds={cartPartIds}
+              filter={filter}
+              onFilterChange={setFilter}
+              onPartClick={handlePartClick}
+              onPartHover={setHoveredPartId}
+            />
+          )}
         </div>
       </div>
 
@@ -141,7 +157,7 @@ const CowPage: React.FC = () => {
         {selectedPart && (
           <PartModal
             part={selectedPart}
-            onClose={() => setSelectedPart(null)}
+            onClose={() => handleModalClose(selectedPart.id)}
           />
         )}
       </AnimatePresence>

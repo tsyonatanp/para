@@ -121,6 +121,9 @@ const PartsList: React.FC<PartsListProps> = ({
                 <span style={{ fontSize: 18 }}>{part.emoji}</span>
                 <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: '#f1f5f9' }}>{part.nameHe}</span>
                 {isInCart && <span style={{ fontSize: 10, color: '#3b82f6', fontWeight: 700 }}>✓ בסל</span>}
+                {!isSold && pct < 10 && !isInCart && (
+                  <span style={{ fontSize: 10, color: '#ef4444', fontWeight: 700 }}>⚡ אחרון!</span>
+                )}
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#f1f5f9' }}>{part.pricePerKg}₪</span>
               </div>
 

@@ -10,18 +10,29 @@ import OrderHistoryPage from './pages/OrderHistoryPage';
 import AdminPage from './pages/AdminPage';
 import RegisterPage from './pages/RegisterPage';
 import ToastContainer from './components/Toast';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useRoundStore } from './stores/roundStore';
+import { useOrderStore } from './stores/orderStore';
 
 // Standalone pages without Layout
 const STANDALONE_PATHS = ['/register'];
 
 function AppContent() {
   const initialize = useRoundStore(s => s.initialize);
+  const initOrders = useOrderStore(s => s.initOrders);
   const location = useLocation();
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    const boot = async () => {
+      await initialize();
+      // After parts are loaded, load orders and recalculate soldKg
+      const roundId = useRoundStore.getState().round?.id;
+      if (roundId) {
+        await initOrders(roundId);
+      }
+    };
+    boot();
+  }, [initialize, initOrders]);
 
   const isStandalone = STANDALONE_PATHS.includes(location.pathname);
 
@@ -56,9 +67,11 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Download, Plus, ChevronDown, ShieldOff, Pencil, Check, X } from 'lucide-react';
@@ -54,9 +54,15 @@ const ButcherDashboard: React.FC = () => {
   }
 
   const { round, parts, updatePart } = useRoundStore();
-  const { orders, setOrderStatus } = useOrderStore();
+  const { orders, setOrderStatus, subscribeToOrders } = useOrderStore();
   const stats = getRoundStats(parts);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!round?.id) return;
+    const unsubscribe = subscribeToOrders(round.id);
+    return unsubscribe;
+  }, [round?.id, subscribeToOrders]);
   const [editingPartId, setEditingPartId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [editTotalKg, setEditTotalKg] = useState('');
@@ -77,6 +83,31 @@ const ButcherDashboard: React.FC = () => {
   };
 
   const cancelEdit = () => setEditingPartId(null);
+
+  const exportCSV = () => {
+    const rows = [
+      ['מספר הזמנה', 'שם', 'טלפון', 'פריטים', 'סה"כ', 'תשלום', 'משלוח', 'סטטוס', 'תאריך'],
+      ...orders.map(o => [
+        o.id.slice(0, 8),
+        o.userName,
+        o.userPhone,
+        o.items.map(i => `${i.partNameHe} ${i.kg}ק"ג`).join(' | '),
+        `${o.totalPrice}₪`,
+        o.paymentType === 'deposit' ? 'מקדמה' : 'מלא',
+        o.deliveryType === 'delivery' ? `משלוח: ${o.deliveryAddress || ''}` : 'איסוף',
+        o.status,
+        new Date(o.createdAt).toLocaleDateString('he-IL'),
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `הזמנות-${new Date().toLocaleDateString('he-IL').replace(/\//g, '-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const expectedRevenue = stats.expectedRevenue;
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
@@ -100,10 +131,10 @@ const ButcherDashboard: React.FC = () => {
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               className="btn-secondary"
-              onClick={() => alert('ייצוא PDF – בקרוב!')}
+              onClick={exportCSV}
               style={{ fontSize: 13 }}
             >
-              <Download size={15} /> ייצוא PDF
+              <Download size={15} /> ייצוא CSV
             </button>
             <Link to="/butcher/create" style={{ textDecoration: 'none' }}>
               <button className="btn-primary" style={{ fontSize: 13 }}>

@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Package, Clock, ChevronDown, ChevronUp, RefreshCw, ShoppingBag } from 'lucide-react';
+import { Package, Clock, ChevronDown, ChevronUp, ShoppingBag, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useOrderStore } from '../stores/orderStore';
+import { useRoundStore } from '../stores/roundStore';
+import { useCartStore } from '../stores/cartStore';
+import { useToastStore } from '../stores/toastStore';
+import { SkeletonOrderCard } from '../components/Skeleton';
+import { Order } from '../api/orders';
 
 const STATUS_MAP: Record<string, { label: string; color: string; emoji: string }> = {
   pending: { label: 'ממתין לאישור', color: '#f97316', emoji: '⏳' },
@@ -16,11 +21,39 @@ const STATUS_MAP: Record<string, { label: string; color: string; emoji: string }
 const OrderHistoryPage: React.FC = () => {
   const user = useAuthStore(s => s.user);
   const allOrders = useOrderStore(s => s.orders);
+  const loading = useOrderStore(s => s.loading);
+  const subscribeToOrders = useOrderStore(s => s.subscribeToOrders);
+  const roundId = useRoundStore(s => s.round?.id);
+  const addItem = useCartStore(s => s.addItem);
+  const clearCart = useCartStore(s => s.clearCart);
+  const addToast = useToastStore(s => s.addToast);
+  const navigate = useNavigate();
   const orders = user
     ? allOrders.filter(o => o.userPhone === user.phone)
     : [];
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const loading = false;
+
+  useEffect(() => {
+    if (!roundId) return;
+    const unsubscribe = subscribeToOrders(roundId);
+    return unsubscribe;
+  }, [roundId, subscribeToOrders]);
+
+  const handleReorder = (order: Order) => {
+    clearCart();
+    order.items.forEach(item => addItem({
+      partId: item.partId,
+      kg: item.kg,
+      processing: item.processing,
+      notes: item.notes || '',
+      pricePerKg: item.pricePerKg,
+      subtotal: item.kg * item.pricePerKg,
+      partNameHe: item.partNameHe,
+      partEmoji: item.partEmoji || '🥩',
+    }));
+    addToast({ message: 'הפריטים נוספו לסל!', type: 'success', emoji: '🛒' });
+    navigate('/cart');
+  };
 
   if (!user) {
     return (
@@ -60,8 +93,8 @@ const OrderHistoryPage: React.FC = () => {
 
         {/* Loading state */}
         {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-            <RefreshCw size={24} color="#8b5cf6" className="spin" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonOrderCard key={i} />)}
           </div>
         )}
 
@@ -222,21 +255,21 @@ const OrderHistoryPage: React.FC = () => {
                       </div>
 
                       {/* Reorder button */}
-                      <Link
-                        to="/cow"
-                        onClick={e => e.stopPropagation()}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleReorder(order); }}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          margin: '14px 0 4px', padding: '10px',
+                          margin: '14px 0 4px', padding: '10px', width: '100%',
                           background: 'rgba(139,92,246,0.1)',
                           border: '1px solid rgba(139,92,246,0.2)',
-                          borderRadius: 10, textDecoration: 'none',
+                          borderRadius: 10, cursor: 'pointer',
                           color: '#c4b5fd', fontSize: 13, fontWeight: 600,
+                          fontFamily: 'Heebo, sans-serif',
                         }}
                       >
                         <RefreshCw size={14} />
                         הזמן שוב
-                      </Link>
+                      </button>
                     </motion.div>
                   )}
                 </motion.div>

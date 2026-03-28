@@ -518,4 +518,4 @@ const CowSVG: React.FC<CowSVGProps> = ({
   );
 };
 
-export default CowSVG;
+export default React.memo(CowSVG);
