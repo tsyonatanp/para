@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, User, MapPin, ArrowLeft, Check, ShoppingCart, Bell, Clock, Shield, Sparkles, ChevronLeft } from 'lucide-react';
+import { Phone, User, MapPin, ArrowLeft, Check, ShoppingCart, Bell, Clock, Shield, Sparkles, ChevronLeft, Lock } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 
@@ -67,18 +67,19 @@ const BENEFITS = [
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, loginAsCustomer, getPhoneRole } = useAuthStore();
+  const { user, registerCustomer, getPhoneRole, findCustomer } = useAuthStore();
   const addToast = useToastStore(s => s.addToast);
 
   const [step, setStep] = useState(0); // 0=intro, 1=phone, 2=details, 3=success
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
+  const [password, setPassword] = useState('');
   const [phoneError, setPhoneError] = useState('');
 
   // If already logged in, redirect
   useEffect(() => {
-    if (user) setStep(3);
+    if (user) navigate('/');
   }, []);
 
   const handlePhoneNext = () => {
@@ -88,10 +89,15 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    // Check if phone is admin/butcher
     const role = getPhoneRole(cleaned);
     if (role !== 'customer') {
       setPhoneError('מספר זה רשום כשוחט/מנהל – השתמש בדף ההתחברות');
+      return;
+    }
+
+    const existing = findCustomer(cleaned);
+    if (existing) {
+      setPhoneError('מספר כבר רשום — השתמש בדף ההתחברות');
       return;
     }
 
@@ -104,11 +110,17 @@ const RegisterPage: React.FC = () => {
       addToast({ message: 'נא להזין שם מלא', type: 'warning' });
       return;
     }
+    if (password.length < 4) {
+      addToast({ message: 'סיסמה חייבת להכיל לפחות 4 תווים', type: 'warning', emoji: '🔑' });
+      return;
+    }
 
-    const fullName = name.trim();
-    loginAsCustomer(phone.trim(), fullName, city.trim());
-    addToast({ message: `ברוך הבא, ${fullName}! 🎉`, type: 'success' });
-    setStep(3);
+    const result = registerCustomer(phone.trim(), name.trim(), password, city.trim());
+    if (result.success) {
+      setStep(3);
+    } else {
+      addToast({ message: result.reason || 'שגיאה ברישום', type: 'warning' });
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -462,6 +474,22 @@ const RegisterPage: React.FC = () => {
                   />
                 </div>
 
+                {/* Password */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Lock size={14} /> בחרו סיסמה *
+                  </label>
+                  <input
+                    className="input-field"
+                    type="password"
+                    dir="ltr"
+                    placeholder="4 תווים לפחות"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    style={{ fontSize: 16, fontWeight: 600, textAlign: 'right' }}
+                  />
+                </div>
+
                 {/* City (optional) */}
                 <div style={{ marginBottom: 20 }}>
                   <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -469,7 +497,7 @@ const RegisterPage: React.FC = () => {
                   </label>
                   <input
                     className="input-field"
-                    placeholder="לדוגמה: כפר קרע"
+                    placeholder="לדוגמה: רחובות"
                     value={city}
                     onChange={e => setCity(e.target.value)}
                     style={{ fontSize: 16 }}
@@ -489,8 +517,17 @@ const RegisterPage: React.FC = () => {
                     boxShadow: '0 4px 20px rgba(34,197,94,0.3)',
                   }}
                 >
-                  🎉 סיום הרשמה
+                  📋 שלח לאישור
                 </motion.button>
+
+                <div style={{
+                  background: 'rgba(251,191,36,0.08)',
+                  border: '1px solid rgba(251,191,36,0.2)',
+                  borderRadius: 10, padding: '10px 12px', marginTop: 12,
+                  fontSize: 12, color: '#fbbf24', lineHeight: 1.6,
+                }}>
+                  ⏳ לאחר ההרשמה, המנהל יאשר את החשבון. תוכלו להתחבר רק אחרי האישור.
+                </div>
               </div>
 
               {/* Progress dots */}
@@ -522,8 +559,8 @@ const RegisterPage: React.FC = () => {
                 transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                 style={{
                   width: 100, height: 100, borderRadius: 30,
-                  background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.05))',
-                  border: '3px solid rgba(34,197,94,0.3)',
+                  background: 'linear-gradient(135deg, rgba(251,191,36,0.2), rgba(251,191,36,0.05))',
+                  border: '3px solid rgba(251,191,36,0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginBottom: 24, position: 'relative',
                 }}
@@ -533,7 +570,7 @@ const RegisterPage: React.FC = () => {
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.5, type: 'spring' }}
                 >
-                  <Check size={48} color="#22c55e" strokeWidth={3} />
+                  <Clock size={48} color="#fbbf24" strokeWidth={3} />
                 </motion.div>
 
                 {/* Floating particles */}
@@ -561,7 +598,7 @@ const RegisterPage: React.FC = () => {
                 transition={{ delay: 0.4 }}
                 style={{ fontSize: 28, fontWeight: 900, color: '#f1f5f9', margin: '0 0 8px 0' }}
               >
-                ברוכים הבאים! 🎉
+                ההרשמה נשלחה! ⏳
               </motion.h2>
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
@@ -569,7 +606,7 @@ const RegisterPage: React.FC = () => {
                 transition={{ delay: 0.5 }}
                 style={{ color: '#94a3b8', fontSize: 16, margin: '0 0 32px 0', maxWidth: 280 }}
               >
-                ההרשמה הושלמה בהצלחה! עכשיו אפשר להזמין בשר טרי 🥩
+                המנהל יבדוק את הבקשה ויאשר. תוכלו להתחבר לאחר האישור.
               </motion.p>
 
               <motion.div
@@ -581,7 +618,7 @@ const RegisterPage: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => navigate('/cow')}
+                  onClick={() => navigate('/')}
                   style={{
                     width: '100%', padding: '16px',
                     background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
@@ -592,7 +629,7 @@ const RegisterPage: React.FC = () => {
                     boxShadow: '0 8px 32px rgba(139,92,246,0.4)',
                   }}
                 >
-                  🐄 בואו נבחר בשר!
+                  🏠 חזרה לדף הבית
                 </motion.button>
 
                 <button

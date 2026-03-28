@@ -18,10 +18,14 @@ export interface ButcherEntry {
   addedAt: number;
 }
 
+export type CustomerStatus = 'pending' | 'approved' | 'rejected';
+
 export interface CustomerEntry {
   phone: string;
   name: string;
+  password: string;
   city?: string;
+  status: CustomerStatus;
   registeredAt: number;
 }
 
@@ -62,9 +66,16 @@ interface AuthStore {
   addButcher: (phone: string, name: string, password: string) => void;
   removeButcher: (phone: string) => void;
 
+  // Customer management (admin)
+  approveCustomer: (phone: string) => void;
+  rejectCustomer: (phone: string) => void;
+  resetCustomerPassword: (phone: string) => string;
+  findCustomer: (phone: string) => CustomerEntry | undefined;
+
   // Auth
-  loginWithPassword: (phone: string, password: string) => boolean;
-  loginAsCustomer: (phone: string, name: string, city?: string) => void;
+  loginWithPassword: (phone: string, password: string) => { success: boolean; reason?: string };
+  registerCustomer: (phone: string, name: string, password: string, city?: string) => { success: boolean; reason?: string };
+  loginAsCustomer: (phone: string, name: string, city?: string) => void; // legacy compat
   sendOtp: (phone: string) => Promise<boolean>;
   verifyOtp: (phone: string, otp: string) => Promise<boolean>;
   setName: (name: string) => void;
@@ -116,45 +127,98 @@ export const useAuthStore = create<AuthStore>()(
         }));
       },
 
+      findCustomer: (phone) => {
+        const normalized = normalizePhone(phone);
+        return get().customers.find(c => normalizePhone(c.phone) === normalized);
+      },
+
+      approveCustomer: (phone) => {
+        const normalized = normalizePhone(phone);
+        set(state => ({
+          customers: state.customers.map(c =>
+            normalizePhone(c.phone) === normalized ? { ...c, status: 'approved' as CustomerStatus } : c
+          ),
+        }));
+      },
+
+      rejectCustomer: (phone) => {
+        const normalized = normalizePhone(phone);
+        set(state => ({
+          customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
+        }));
+      },
+
+      resetCustomerPassword: (phone) => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let newPass = '';
+        for (let i = 0; i < 8; i++) newPass += chars.charAt(Math.floor(Math.random() * chars.length));
+        const normalized = normalizePhone(phone);
+        set(state => ({
+          customers: state.customers.map(c =>
+            normalizePhone(c.phone) === normalized ? { ...c, password: newPass } : c
+          ),
+        }));
+        return newPass;
+      },
+
       loginWithPassword: (phone, password) => {
         const normalized = normalizePhone(phone);
 
         // Admin login
         if (isAdminPhone(normalized)) {
-          if (password !== ADMIN_PASSWORD) return false;
+          if (password !== ADMIN_PASSWORD) return { success: false, reason: 'סיסמה שגויה' };
           set({
             user: { id: 'admin', phone: normalized, name: 'מנהל מערכת', role: 'admin' },
             otpSent: false,
           });
-          return true;
+          return { success: true };
         }
 
         // Butcher login
         const butcher = get().butchers.find(b => normalizePhone(b.phone) === normalized);
         if (butcher) {
-          if (password !== butcher.password) return false;
+          if (password !== butcher.password) return { success: false, reason: 'סיסמה שגויה' };
           set({
             user: { id: `butcher-${normalized}`, phone: normalized, name: butcher.name, role: 'butcher' },
             otpSent: false,
           });
-          return true;
+          return { success: true };
         }
 
-        return false;
+        // Customer login
+        const customer = get().customers.find(c => normalizePhone(c.phone) === normalized);
+        if (customer) {
+          if (customer.status === 'pending') return { success: false, reason: 'ההרשמה שלך ממתינה לאישור מנהל' };
+          if (customer.password !== password) return { success: false, reason: 'סיסמה שגויה' };
+          set({
+            user: { id: `cust-${normalized}`, phone: normalized, name: customer.name, role: 'customer' },
+            otpSent: false,
+          });
+          return { success: true };
+        }
+
+        return { success: false, reason: 'מספר הטלפון לא נמצא — נרשמים קודם' };
       },
 
+      registerCustomer: (phone, name, password, city) => {
+        const normalized = normalizePhone(phone);
+        if (isAdminPhone(normalized)) return { success: false, reason: 'מספר שמור' };
+        if (get().butchers.some(b => normalizePhone(b.phone) === normalized)) return { success: false, reason: 'מספר רשום כשוחט' };
+        if (get().customers.some(c => normalizePhone(c.phone) === normalized)) return { success: false, reason: 'מספר כבר רשום' };
+
+        set(state => ({
+          customers: [...state.customers, {
+            phone: normalized, name, password, city,
+            status: 'pending' as CustomerStatus,
+            registeredAt: Date.now(),
+          }],
+        }));
+        return { success: true };
+      },
+
+      // Legacy compat – used by reorder
       loginAsCustomer: (phone, name, city) => {
         const normalized = normalizePhone(phone);
-        
-        // Add to customers list if not exists
-        set(state => {
-          const exists = state.customers.some(c => c.phone === normalized);
-          if (exists) return state;
-          return {
-            customers: [...state.customers, { phone: normalized, name, city, registeredAt: Date.now() }],
-          };
-        });
-
         set({
           user: { id: `cust-${Date.now()}`, phone: normalized, name, role: 'customer' },
           otpSent: false,

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, User, ArrowLeft, Loader2, Shield, Lock, Eye, EyeOff } from 'lucide-react';
+import { X, Phone, User, ArrowLeft, Shield, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore, UserRole } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 
@@ -8,19 +8,22 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
+type Step = 'phone' | 'password' | 'register';
+
 const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
-  const { isLoading, loginWithPassword, loginAsCustomer } = useAuthStore();
+  const { isLoading, loginWithPassword, registerCustomer } = useAuthStore();
   const addToast = useToastStore(s => s.addToast);
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setNameInput] = useState('');
+  const [regPassword, setRegPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState<'phone' | 'password' | 'name'>('phone');
+  const [step, setStep] = useState<Step>('phone');
   const [detectedRole, setDetectedRole] = useState<UserRole>('customer');
   const [loginError, setLoginError] = useState('');
+  const [isNewUser, setIsNewUser] = useState(false);
 
-  // Detect role on phone change
   const handlePhoneContinue = () => {
     const trimmed = phone.trim();
     const cleanPhone = trimmed.replace(/[-\s()]/g, '');
@@ -29,24 +32,24 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       return;
     }
 
-    const { getPhoneRole, customers } = useAuthStore.getState();
+    const { getPhoneRole, findCustomer } = useAuthStore.getState();
     const role = getPhoneRole(trimmed);
     setDetectedRole(role);
     setLoginError('');
 
     if (role === 'admin' || role === 'butcher') {
-      // Known user – needs password
+      setIsNewUser(false);
       setStep('password');
     } else {
-      // Customer – check if already registered
-      const existingCustomer = customers?.find(c => c.phone === cleanPhone);
-      if (existingCustomer) {
-        loginAsCustomer(existingCustomer.phone, existingCustomer.name, existingCustomer.city);
-        addToast({ message: `ברוך שובך, ${existingCustomer.name}! 🎉`, type: 'success' });
-        onClose();
+      const customer = findCustomer(trimmed);
+      if (customer) {
+        // Existing customer → needs password
+        setIsNewUser(false);
+        setStep('password');
       } else {
-        // New customer – needs name
-        setStep('name');
+        // New customer → register
+        setIsNewUser(true);
+        setStep('register');
       }
     }
   };
@@ -57,32 +60,41 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       return;
     }
 
-    const success = loginWithPassword(phone.trim(), password);
-    if (success) {
-      const roleName = detectedRole === 'admin' ? 'מנהל מערכת' : 'שוחט';
-      addToast({ message: `ברוך הבא, ${roleName}! 🎉`, type: 'success' });
+    const result = loginWithPassword(phone.trim(), password);
+    if (result.success) {
+      const user = useAuthStore.getState().user;
+      addToast({ message: `ברוך הבא, ${user?.name || ''}! 🎉`, type: 'success' });
       onClose();
     } else {
-      setLoginError('סיסמה שגויה');
+      setLoginError(result.reason || 'שגיאת התחברות');
       setPassword('');
     }
   };
 
-  const handleCustomerLogin = () => {
+  const handleRegister = () => {
     if (name.trim().length < 2) {
       addToast({ message: 'נא להזין שם מלא', type: 'warning' });
       return;
     }
-    loginAsCustomer(phone.trim(), name.trim());
-    addToast({ message: `ברוך הבא, ${name.trim()}! 🎉`, type: 'success' });
-    onClose();
+    if (regPassword.length < 4) {
+      setLoginError('סיסמה חייבת להכיל לפחות 4 תווים');
+      return;
+    }
+
+    const result = registerCustomer(phone.trim(), name.trim(), regPassword);
+    if (result.success) {
+      addToast({ message: 'ההרשמה נשלחה! ממתין לאישור מנהל ⏳', type: 'info', emoji: '📋' });
+      onClose();
+    } else {
+      setLoginError(result.reason || 'שגיאה ברישום');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (step === 'phone') handlePhoneContinue();
       else if (step === 'password') handlePasswordLogin();
-      else if (step === 'name') handleCustomerLogin();
+      else if (step === 'register') handleRegister();
     }
   };
 
@@ -136,7 +148,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {step !== 'phone' && (
                 <button
-                  onClick={() => { setStep('phone'); setLoginError(''); setPassword(''); }}
+                  onClick={() => { setStep('phone'); setLoginError(''); setPassword(''); setRegPassword(''); }}
                   style={{
                     background: 'none', border: 'none', color: '#94a3b8',
                     cursor: 'pointer', display: 'flex', padding: 4,
@@ -144,7 +156,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 ><ArrowLeft size={18} /></button>
               )}
               <h2 style={{ fontSize: 20, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>
-                {step === 'phone' ? '🔐 התחברות' : step === 'password' ? '🔑 הזדהות' : '👤 מי אתם?'}
+                {step === 'phone' ? '🔐 התחברות' : step === 'password' ? '🔑 הזדהות' : '📝 הרשמה'}
               </h2>
             </div>
             <button
@@ -165,7 +177,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
               style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
               <p style={{ color: '#94a3b8', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                הזינו את מספר הטלפון שלכם כדי להתחבר.
+                הזינו את מספר הטלפון שלכם כדי להתחבר או להירשם.
               </p>
               <div>
                 <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
@@ -198,15 +210,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 <Shield size={18} />
                 המשך
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-                <span style={{ fontSize: 11, color: '#4b5563' }}>ללא סיסמא, רק טלפון</span>
-                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-              </div>
             </motion.div>
           )}
 
-          {/* Step: Password (admin/butcher) */}
+          {/* Step: Password (all roles) */}
           {step === 'password' && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -262,7 +269,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Error message */}
               {loginError && (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
@@ -296,16 +302,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             </motion.div>
           )}
 
-          {/* Step: Name (customer) */}
-          {step === 'name' && (
+          {/* Step: Register (new customer) */}
+          {step === 'register' && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
             >
               <p style={{ color: '#94a3b8', fontSize: 14, margin: 0 }}>
-                עוד צעד אחד! איך קוראים לכם?
+                לקוח חדש? מלאו את הפרטים וממתינים לאישור.
               </p>
+
               <div>
                 <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
                   <User size={14} style={{ display: 'inline', marginLeft: 4 }} /> שם מלא
@@ -319,8 +326,54 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                   style={{ fontSize: 16, fontWeight: 600 }}
                 />
               </div>
+
+              <div>
+                <label style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6, display: 'block' }}>
+                  <Lock size={14} style={{ display: 'inline', marginLeft: 4 }} /> בחרו סיסמה (4+ תווים)
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="input-field"
+                    type={showPassword ? 'text' : 'password'}
+                    dir="ltr"
+                    placeholder="סיסמה"
+                    value={regPassword}
+                    onChange={e => { setRegPassword(e.target.value); setLoginError(''); }}
+                    style={{
+                      textAlign: 'right', fontSize: 16, fontWeight: 600, paddingLeft: 44,
+                      borderColor: loginError ? '#ef4444' : undefined,
+                    }}
+                  />
+                  <button
+                    onClick={() => setShowPassword(!showPassword)}
+                    type="button"
+                    style={{
+                      position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', color: '#6b7280',
+                      cursor: 'pointer', display: 'flex', padding: 2,
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {loginError && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    color: '#ef4444', fontSize: 13, fontWeight: 600,
+                    padding: '8px 12px', borderRadius: 8,
+                    background: 'rgba(239,68,68,0.1)',
+                  }}
+                >
+                  ❌ {loginError}
+                </motion.div>
+              )}
+
               <button
-                onClick={handleCustomerLogin}
+                onClick={handleRegister}
                 style={{
                   width: '100%', padding: '14px',
                   background: 'linear-gradient(135deg, #22c55e, #16a34a)',
@@ -331,8 +384,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
                   boxShadow: '0 4px 20px rgba(34,197,94,0.3)',
                 }}
               >
-                🎉 בואו נתחיל!
+                📋 שלח לאישור
               </button>
+
+              <div style={{
+                background: 'rgba(251,191,36,0.08)',
+                border: '1px solid rgba(251,191,36,0.2)',
+                borderRadius: 10, padding: '10px 12px',
+                fontSize: 12, color: '#fbbf24', lineHeight: 1.6,
+              }}>
+                ⏳ לאחר ההרשמה, המנהל יאשר את החשבון שלכם. תוכלו להתחבר רק אחרי האישור.
+              </div>
             </motion.div>
           )}
         </motion.div>
