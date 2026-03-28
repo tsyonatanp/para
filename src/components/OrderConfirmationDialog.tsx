@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, MapPin, CreditCard } from 'lucide-react';
-import { CartItem } from '../stores/cartStore';
-import { ProcessingOption } from '../types';
+import { CartItem, ProcessingOption } from '../types';
 
 const PROCESSING_LABELS: Record<ProcessingOption, string> = {
   whole: 'שלם', sliced: 'פרוס', cubed: 'קוביות', ground: 'טחון',

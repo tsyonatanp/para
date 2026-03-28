@@ -91,7 +91,7 @@ const ButcherDashboard: React.FC = () => {
         o.id.slice(0, 8),
         o.userName,
         o.userPhone,
-        o.items.map(i => `${i.partNameHe} ${i.kg}ק"ג`).join(' | '),
+        (o.items || []).map(i => `${i.partNameHe} ${i.kg}ק"ג`).join(' | '),
         `${o.totalPrice}₪`,
         o.paymentType === 'deposit' ? 'מקדמה' : 'מלא',
         o.deliveryType === 'delivery' ? `משלוח: ${o.deliveryAddress || ''}` : 'איסוף',

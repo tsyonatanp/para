@@ -153,7 +153,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase!.removeChannel(channel);
     };
   },
 }));

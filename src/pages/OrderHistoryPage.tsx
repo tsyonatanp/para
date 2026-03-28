@@ -41,7 +41,7 @@ const OrderHistoryPage: React.FC = () => {
 
   const handleReorder = (order: Order) => {
     clearCart();
-    order.items.forEach(item => addItem({
+    (order.items || []).forEach(item => addItem({
       partId: item.partId,
       kg: item.kg,
       processing: item.processing,

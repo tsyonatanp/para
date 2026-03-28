@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Bell, Shield, Truck, Clock, Star, ArrowLeft } from 'lucide-react';
 import { useRoundStore } from '../stores/roundStore';
 import { getRoundStats, getPartAvailability } from '../data/mockData';
@@ -20,14 +20,14 @@ const TESTIMONIALS = [
   { name: 'גיל שפירא', text: 'שירות מעולה, מחירים הוגנים, ואיכות ללא פשרות.', city: 'ראשון לציון' },
 ];
 
-const stagger: Variants = {
+const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
 };
 
-const fadeUp: Variants = {
+const fadeUp = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
 };
 
 const HomePage: React.FC = () => {

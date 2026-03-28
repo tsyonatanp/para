@@ -1,16 +1,24 @@
 import { create } from 'zustand';
 import { CartItem, ProcessingOption } from '../types';
 
+export type { CartItem };
+
+type TimeSlot = 'morning' | 'afternoon' | 'evening';
+
 interface CartStore {
   items: CartItem[];
   deliveryType: 'pickup' | 'delivery';
   deliveryAddress: string;
+  deliveryDate: string | null;
+  deliveryTimeSlot: TimeSlot | null;
   paymentType: 'deposit' | 'full';
   addItem: (item: CartItem) => void;
   removeItem: (partId: string) => void;
   updateItem: (partId: string, kg: number, processing: ProcessingOption, notes: string) => void;
   setDeliveryType: (type: 'pickup' | 'delivery') => void;
   setDeliveryAddress: (address: string) => void;
+  setDeliveryDate: (date: string) => void;
+  setDeliveryTimeSlot: (slot: TimeSlot) => void;
   setPaymentType: (type: 'deposit' | 'full') => void;
   clearCart: () => void;
   get totalKg(): number;
@@ -24,6 +32,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
   deliveryType: 'pickup',
   deliveryAddress: '',
+  deliveryDate: null,
+  deliveryTimeSlot: null,
   paymentType: 'full',
 
   addItem: (item) => set(state => {
@@ -52,8 +62,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   setDeliveryType: (type) => set({ deliveryType: type }),
   setDeliveryAddress: (address) => set({ deliveryAddress: address }),
+  setDeliveryDate: (date) => set({ deliveryDate: date }),
+  setDeliveryTimeSlot: (slot) => set({ deliveryTimeSlot: slot }),
   setPaymentType: (type) => set({ paymentType: type }),
-  clearCart: () => set({ items: [], deliveryType: 'pickup', deliveryAddress: '', paymentType: 'full' }),
+  clearCart: () => set({ items: [], deliveryType: 'pickup', deliveryAddress: '', deliveryDate: null, deliveryTimeSlot: null, paymentType: 'full' }),
 
   get totalKg() {
     return get().items.reduce((sum, i) => sum + i.kg, 0);
