@@ -27,7 +27,7 @@ const stagger = {
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
 };
 
 const HomePage: React.FC = () => {
@@ -172,7 +172,7 @@ const HomePage: React.FC = () => {
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${stats.soldPercent}%` }}
-                    transition={{ duration: 1.5, ease: [0.4, 0, 0.2, 1] }}
+                    transition={{ duration: 1.5, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] }}
                     style={{
                       height: '100%', borderRadius: 999,
                       background: stats.soldPercent > 85
