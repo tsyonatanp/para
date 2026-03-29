@@ -110,11 +110,43 @@ export const useAuthStore = create<AuthStore>()(
           return;
         }
         try {
-          const [customers, butchers] = await Promise.all([
+          // Get current localStorage data before overwriting
+          const localCustomers = get().customers;
+          const localButchers = get().butchers;
+
+          const [dbCustomers, dbButchers] = await Promise.all([
             fetchCustomers(),
             fetchButchers(),
           ]);
-          set({ customers, butchers, dbReady: true });
+
+          // One-time migration: push localStorage customers to Supabase
+          if (localCustomers.length > 0 && dbCustomers.length === 0) {
+            for (const c of localCustomers) {
+              if (c.phone && c.name) {
+                await registerCustomerDb(c.phone, c.name, c.password || '', c.city);
+                // If the customer was already approved locally, approve in DB too
+                if (c.status === 'approved') await approveCustomerDb(c.phone);
+              }
+            }
+            // Re-fetch after migration
+            const migrated = await fetchCustomers();
+            set({ customers: migrated, dbReady: true });
+          } else {
+            set({ customers: dbCustomers, dbReady: true });
+          }
+
+          // One-time migration: push localStorage butchers to Supabase
+          if (localButchers.length > 0 && dbButchers.length === 0) {
+            for (const b of localButchers) {
+              if (b.phone && b.name) {
+                await addButcherDb(b.phone, b.name, b.password || '');
+              }
+            }
+            const migratedButchers = await fetchButchers();
+            set({ butchers: migratedButchers });
+          } else {
+            set({ butchers: dbButchers });
+          }
 
           // Subscribe to realtime changes
           subscribeToCustomers((updatedCustomers) => {
