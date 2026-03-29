@@ -96,7 +96,7 @@ const RegisterPage: React.FC = () => {
     }
 
     const existing = findCustomer(cleaned);
-    if (existing) {
+    if (existing && existing.password) {
       setPhoneError('מספר כבר רשום — השתמש בדף ההתחברות');
       return;
     }

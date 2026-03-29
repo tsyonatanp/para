@@ -208,6 +208,7 @@ export const useAuthStore = create<AuthStore>()(
         if (customer) {
           if (customer.status === 'pending') return { success: false, reason: 'ההרשמה שלך ממתינה לאישור מנהל' };
           if (customer.status === 'rejected') return { success: false, reason: 'החשבון שלך חסום. פנה למנהל' };
+          if (!customer.password) return { success: false, reason: 'יש להגדיר סיסמה — השתמש בדף ההרשמה' };
           if (customer.password !== password) return { success: false, reason: 'סיסמה שגויה' };
           set({
             user: { id: `cust-${normalized}`, phone: normalized, name: customer.name, role: 'customer' },
@@ -223,7 +224,20 @@ export const useAuthStore = create<AuthStore>()(
         const normalized = normalizePhone(phone);
         if (isAdminPhone(normalized)) return { success: false, reason: 'מספר שמור' };
         if (get().butchers.some(b => normalizePhone(b.phone) === normalized)) return { success: false, reason: 'מספר רשום כשוחט' };
-        if (get().customers.some(c => normalizePhone(c.phone) === normalized)) return { success: false, reason: 'מספר כבר רשום' };
+        // Allow re-registration if existing customer has empty password (migrated from old format)
+        const existingCustomer = get().customers.find(c => normalizePhone(c.phone) === normalized);
+        if (existingCustomer) {
+          if (existingCustomer.password) return { success: false, reason: 'מספר כבר רשום' };
+          // Update existing entry with new password and details
+          set(state => ({
+            customers: state.customers.map(c =>
+              normalizePhone(c.phone) === normalized
+                ? { ...c, name, password, city: city || c.city, status: c.status }
+                : c
+            ),
+          }));
+          return { success: true };
+        }
 
         set(state => ({
           customers: [...state.customers, {

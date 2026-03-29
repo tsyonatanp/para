@@ -42,12 +42,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       setStep('password');
     } else {
       const customer = findCustomer(trimmed);
-      if (customer) {
-        // Existing customer → needs password
+      if (customer && customer.password) {
+        // Existing customer with password → login
         setIsNewUser(false);
         setStep('password');
       } else {
-        // New customer → register
+        // New customer or migrated customer without password → register
         setIsNewUser(true);
         setStep('register');
       }
