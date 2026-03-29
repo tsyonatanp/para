@@ -69,6 +69,8 @@ interface AuthStore {
   // Customer management (admin)
   approveCustomer: (phone: string) => void;
   rejectCustomer: (phone: string) => void;
+  deleteCustomer: (phone: string) => void;
+  blockCustomer: (phone: string) => void;
   resetCustomerPassword: (phone: string) => string;
   findCustomer: (phone: string) => CustomerEntry | undefined;
 
@@ -148,6 +150,22 @@ export const useAuthStore = create<AuthStore>()(
         }));
       },
 
+      deleteCustomer: (phone) => {
+        const normalized = normalizePhone(phone);
+        set(state => ({
+          customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
+        }));
+      },
+
+      blockCustomer: (phone) => {
+        const normalized = normalizePhone(phone);
+        set(state => ({
+          customers: state.customers.map(c =>
+            normalizePhone(c.phone) === normalized ? { ...c, status: 'rejected' as CustomerStatus } : c
+          ),
+        }));
+      },
+
       resetCustomerPassword: (phone) => {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         let newPass = '';
@@ -189,6 +207,7 @@ export const useAuthStore = create<AuthStore>()(
         const customer = get().customers.find(c => normalizePhone(c.phone) === normalized);
         if (customer) {
           if (customer.status === 'pending') return { success: false, reason: 'ההרשמה שלך ממתינה לאישור מנהל' };
+          if (customer.status === 'rejected') return { success: false, reason: 'החשבון שלך חסום. פנה למנהל' };
           if (customer.password !== password) return { success: false, reason: 'סיסמה שגויה' };
           set({
             user: { id: `cust-${normalized}`, phone: normalized, name: customer.name, role: 'customer' },

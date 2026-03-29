@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, UserPlus, Trash2, Phone, ArrowRight, Users, Lock, Eye, EyeOff, Copy, Check, MapPin, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Phone, ArrowRight, Users, Lock, Eye, EyeOff, Copy, Check, MapPin, Calendar, CheckCircle, XCircle, RefreshCw, Ban, Search, UserX } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 import type { CustomerEntry } from '../stores/authStore';
@@ -14,11 +14,14 @@ const AdminPage: React.FC = () => {
   const removeButcher = useAuthStore(s => s.removeButcher);
   const approveCustomer = useAuthStore(s => s.approveCustomer);
   const rejectCustomer = useAuthStore(s => s.rejectCustomer);
+  const deleteCustomer = useAuthStore(s => s.deleteCustomer);
+  const blockCustomer = useAuthStore(s => s.blockCustomer);
   const resetCustomerPassword = useAuthStore(s => s.resetCustomerPassword);
   const addToast = useToastStore(s => s.addToast);
 
   const pendingCustomers = customers.filter(c => c.status === 'pending');
   const approvedCustomers = customers.filter(c => c.status === 'approved');
+  const blockedCustomers = customers.filter(c => c.status === 'rejected');
 
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
@@ -26,6 +29,7 @@ const AdminPage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [customerSearch, setCustomerSearch] = useState('');
 
   // Only admin can access
   if (!isAdmin) return <Navigate to="/" replace />;
@@ -330,79 +334,95 @@ const AdminPage: React.FC = () => {
           )}
         </div>
 
-        {/* Pending approval */}
-        {pendingCustomers.length > 0 && (
-          <div style={{
-            background: '#16161f',
-            border: '1px solid rgba(251,191,36,0.2)',
-            borderRadius: 16, padding: 20,
-            marginTop: 20,
-          }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              ⏳ ממתינים לאישור
-              <span style={{
-                background: 'rgba(251,191,36,0.15)', color: '#fbbf24',
-                padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
-              }}>
-                {pendingCustomers.length}
-              </span>
-            </h3>
+        {/* Pending approval - always visible */}
+        <div style={{
+          background: '#16161f',
+          border: `1px solid ${pendingCustomers.length > 0 ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.06)'}`,
+          borderRadius: 16, padding: 20,
+          marginTop: 20,
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            ⏳ ממתינים לאישור
+            <span style={{
+              background: pendingCustomers.length > 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.05)',
+              color: pendingCustomers.length > 0 ? '#fbbf24' : '#6b7280',
+              padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
+            }}>
+              {pendingCustomers.length}
+            </span>
+          </h3>
+
+          {pendingCustomers.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '24px 16px',
+              color: '#4b5563', fontSize: 14,
+            }}>
+              <CheckCircle size={32} color="#374151" style={{ marginBottom: 8 }} />
+              <p style={{ margin: 0 }}>אין בקשות חדשות</p>
+            </div>
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {pendingCustomers.map((customer) => (
-                <div
+                <motion.div
                   key={customer.phone}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   style={{
                     padding: '14px',
                     borderRadius: 12,
                     background: 'rgba(251,191,36,0.05)',
                     border: '1px solid rgba(251,191,36,0.15)',
-                    display: 'flex', alignItems: 'center', gap: 12,
                   }}
                 >
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 10,
-                    background: 'rgba(251,191,36,0.15)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18, flexShrink: 0,
-                  }}>
-                    ⏳
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9' }}>{customer.name}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
-                      📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: 'rgba(251,191,36,0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, flexShrink: 0,
+                    }}>
+                      ⏳
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9' }}>{customer.name}</div>
+                      <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12, marginTop: 2 }}>
+                        <span style={{ direction: 'ltr' }}>📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}</span>
+                        {customer.city && <span><MapPin size={10} style={{ display: 'inline' }} /> {customer.city}</span>}
+                        <span><Calendar size={10} style={{ display: 'inline' }} /> {new Date(customer.registeredAt).toLocaleDateString('he-IL')}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => { approveCustomer(customer.phone); addToast({ message: `${customer.name} אושר!`, type: 'success' }); }}
+                        style={{
+                          background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
+                          borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+                          color: '#22c55e', fontFamily: 'Heebo, sans-serif', fontSize: 13, fontWeight: 700,
+                          display: 'flex', alignItems: 'center', gap: 4,
+                        }}
+                      >
+                        <CheckCircle size={14} /> אשר
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => { rejectCustomer(customer.phone); addToast({ message: `${customer.name} נדחה`, type: 'info' }); }}
+                        title="דחה ומחק"
+                        style={{
+                          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                          borderRadius: 8, padding: '6px 8px', cursor: 'pointer',
+                          color: '#ef4444', display: 'flex',
+                        }}
+                      >
+                        <XCircle size={14} />
+                      </motion.button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => { approveCustomer(customer.phone); addToast({ message: `✅ ${customer.name} אושר!`, type: 'success' }); }}
-                      style={{
-                        background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
-                        borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
-                        color: '#22c55e', fontFamily: 'Heebo, sans-serif', fontSize: 13, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', gap: 4,
-                      }}
-                    >
-                      <CheckCircle size={14} /> אשר
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => { rejectCustomer(customer.phone); addToast({ message: `❌ ${customer.name} נדחה`, type: 'info' }); }}
-                      style={{
-                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                        borderRadius: 8, padding: '6px 8px', cursor: 'pointer',
-                        color: '#ef4444', display: 'flex',
-                      }}
-                    >
-                      <XCircle size={14} />
-                    </motion.button>
-                  </div>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Approved customers */}
         <div style={{
@@ -411,16 +431,32 @@ const AdminPage: React.FC = () => {
           borderRadius: 16, padding: 20,
           marginTop: 20,
         }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Users size={18} color="#8b5cf6" />
-            לקוחות מאושרים
-            <span style={{
-              background: 'rgba(139,92,246,0.15)', color: '#c4b5fd',
-              padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
-            }}>
-              {approvedCustomers.length}
-            </span>
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Users size={18} color="#8b5cf6" />
+              לקוחות מאושרים
+              <span style={{
+                background: 'rgba(139,92,246,0.15)', color: '#c4b5fd',
+                padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
+              }}>
+                {approvedCustomers.length}
+              </span>
+            </h3>
+          </div>
+
+          {/* Search */}
+          {approvedCustomers.length > 2 && (
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <Search size={14} color="#6b7280" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                className="input-field"
+                placeholder="חיפוש לפי שם או טלפון..."
+                value={customerSearch}
+                onChange={e => setCustomerSearch(e.target.value)}
+                style={{ fontSize: 13, paddingRight: 36 }}
+              />
+            </div>
+          )}
 
           {approvedCustomers.length === 0 ? (
             <div style={{
@@ -433,66 +469,166 @@ const AdminPage: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <AnimatePresence>
-                {[...approvedCustomers].sort((a,b) => b.registeredAt - a.registeredAt).map((customer, idx) => (
+                {[...approvedCustomers]
+                  .filter(c => {
+                    if (!customerSearch.trim()) return true;
+                    const q = customerSearch.trim().toLowerCase();
+                    return c.name.toLowerCase().includes(q) || c.phone.includes(q);
+                  })
+                  .sort((a,b) => b.registeredAt - a.registeredAt)
+                  .map((customer, idx) => (
                   <motion.div
                     key={customer.phone}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
                     transition={{ delay: idx * 0.05 }}
                     style={{
                       padding: '14px',
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.03)',
                       border: '1px solid rgba(255,255,255,0.04)',
-                      display: 'flex', alignItems: 'center', gap: 12,
                     }}
                   >
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 10,
-                      background: 'rgba(139,92,246,0.1)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 18, color: '#c4b5fd', flexShrink: 0,
-                    }}>
-                      👤
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {customer.name}
-                        {customer.city && (
-                          <span style={{ fontSize: 11, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <MapPin size={10} /> {customer.city}
-                          </span>
-                        )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 10,
+                        background: 'rgba(139,92,246,0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 18, color: '#c4b5fd', flexShrink: 0,
+                      }}>
+                        👤
                       </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12, marginTop: 4 }}>
-                         <span style={{ direction: 'ltr' }}>📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}</span>
-                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={10} /> {new Date(customer.registeredAt).toLocaleDateString('he-IL')}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {customer.name}
+                          {customer.city && (
+                            <span style={{ fontSize: 11, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <MapPin size={10} /> {customer.city}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 12, marginTop: 4 }}>
+                           <span style={{ direction: 'ltr' }}>📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}</span>
+                           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Calendar size={10} /> {new Date(customer.registeredAt).toLocaleDateString('he-IL')}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => {
+                            const newPass = resetCustomerPassword(customer.phone);
+                            const text = `🔑 סיסמה חדשה ל-FreshCut\n\nשם: ${customer.name}\nטלפון: ${customer.phone}\nסיסמה חדשה: ${newPass}\n\nכניסה: ${window.location.origin}`;
+                            navigator.clipboard.writeText(text);
+                            addToast({ message: `סיסמה חדשה הועתקה: ${newPass}`, type: 'success' });
+                          }}
+                          title="אפס סיסמה והעתק"
+                          style={{
+                            background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)',
+                            borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                            color: '#fbbf24', fontFamily: 'Heebo, sans-serif', fontSize: 11, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          <RefreshCw size={12} /> איפוס
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => { blockCustomer(customer.phone); addToast({ message: `${customer.name} נחסם`, type: 'warning' }); }}
+                          title="חסום לקוח"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                            borderRadius: 8, padding: '6px 8px', cursor: 'pointer',
+                            color: '#ef4444', display: 'flex',
+                          }}
+                        >
+                          <Ban size={14} />
+                        </motion.button>
                       </div>
                     </div>
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => {
-                        const newPass = resetCustomerPassword(customer.phone);
-                        const text = `🔑 סיסמה חדשה ל-FreshCut\n\nשם: ${customer.name}\nטלפון: ${customer.phone}\nסיסמה חדשה: ${newPass}\n\nכניסה: ${window.location.origin}`;
-                        navigator.clipboard.writeText(text);
-                        addToast({ message: `🔑 סיסמה חדשה הועתקה: ${newPass}`, type: 'success' });
-                      }}
-                      title="אפס סיסמה והעתק"
-                      style={{
-                        background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)',
-                        borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
-                        color: '#fbbf24', fontFamily: 'Heebo, sans-serif', fontSize: 11, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
-                      }}
-                    >
-                      <RefreshCw size={12} /> אפס סיסמה
-                    </motion.button>
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
           )}
         </div>
+
+        {/* Blocked customers */}
+        {blockedCustomers.length > 0 && (
+          <div style={{
+            background: '#16161f',
+            border: '1px solid rgba(239,68,68,0.15)',
+            borderRadius: 16, padding: 20,
+            marginTop: 20,
+          }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Ban size={18} color="#ef4444" />
+              לקוחות חסומים
+              <span style={{
+                background: 'rgba(239,68,68,0.15)', color: '#ef4444',
+                padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800,
+              }}>
+                {blockedCustomers.length}
+              </span>
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {blockedCustomers.map((customer) => (
+                <div
+                  key={customer.phone}
+                  style={{
+                    padding: '14px',
+                    borderRadius: 12,
+                    background: 'rgba(239,68,68,0.03)',
+                    border: '1px solid rgba(239,68,68,0.1)',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: 'rgba(239,68,68,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <UserX size={18} color="#ef4444" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: '#94a3b8', textDecoration: 'line-through' }}>{customer.name}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', direction: 'ltr', textAlign: 'right' }}>
+                      📱 {customer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => { approveCustomer(customer.phone); addToast({ message: `${customer.name} שוחרר מחסימה`, type: 'success' }); }}
+                      title="בטל חסימה"
+                      style={{
+                        background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+                        borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                        color: '#22c55e', fontFamily: 'Heebo, sans-serif', fontSize: 11, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <CheckCircle size={12} /> שחרר
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => { deleteCustomer(customer.phone); addToast({ message: `${customer.name} נמחק לצמיתות`, type: 'info' }); }}
+                      title="מחק לצמיתות"
+                      style={{
+                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                        borderRadius: 8, padding: '6px 8px', cursor: 'pointer',
+                        color: '#ef4444', display: 'flex',
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </motion.button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick links */}
         <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
