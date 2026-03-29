@@ -295,6 +295,22 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'freshcut-auth',
+      version: 1,
+      migrate: (persisted: any, version: number) => {
+        if (version === 0 || !version) {
+          // Migrate old customer entries that lack password/status fields
+          const state = persisted as any;
+          if (state?.customers) {
+            state.customers = state.customers.map((c: any) => ({
+              ...c,
+              password: c.password || '',
+              status: c.status || 'approved',
+              registeredAt: c.registeredAt || Date.now(),
+            }));
+          }
+        }
+        return persisted;
+      },
       partialize: (state) => ({
         user: state.user,
         butchers: state.butchers,
