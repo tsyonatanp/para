@@ -54,13 +54,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     }
   };
 
-  const handlePasswordLogin = () => {
+  const handlePasswordLogin = async () => {
     if (password.length < 1) {
       setLoginError('נא להזין סיסמה');
       return;
     }
 
-    const result = loginWithPassword(phone.trim(), password);
+    const result = await loginWithPassword(phone.trim(), password);
     if (result.success) {
       const user = useAuthStore.getState().user;
       addToast({ message: `ברוך הבא, ${user?.name || ''}! 🎉`, type: 'success' });
@@ -71,7 +71,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (name.trim().length < 2) {
       addToast({ message: 'נא להזין שם מלא', type: 'warning' });
       return;
@@ -81,7 +81,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
       return;
     }
 
-    const result = registerCustomer(phone.trim(), name.trim(), regPassword);
+    const result = await registerCustomer(phone.trim(), name.trim(), regPassword);
     if (result.success) {
       addToast({ message: 'ההרשמה נשלחה! ממתין לאישור מנהל ⏳', type: 'info', emoji: '📋' });
       onClose();

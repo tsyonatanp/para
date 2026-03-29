@@ -105,7 +105,7 @@ const RegisterPage: React.FC = () => {
     setStep(2);
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (name.trim().length < 2) {
       addToast({ message: 'נא להזין שם מלא', type: 'warning' });
       return;
@@ -115,7 +115,7 @@ const RegisterPage: React.FC = () => {
       return;
     }
 
-    const result = registerCustomer(phone.trim(), name.trim(), password, city.trim());
+    const result = await registerCustomer(phone.trim(), name.trim(), password, city.trim());
     if (result.success) {
       setStep(3);
     } else {

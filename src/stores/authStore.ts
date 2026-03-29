@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
+import {
+  fetchCustomers, fetchButchers,
+  registerCustomerDb, approveCustomerDb, rejectCustomerDb,
+  blockCustomerDb, deleteCustomerDb, resetCustomerPasswordDb,
+  findCustomerDb, addButcherDb, removeButcherDb,
+  subscribeToCustomers,
+} from '../api/customers';
 
 export type UserRole = 'customer' | 'butcher' | 'admin';
 
@@ -14,7 +21,7 @@ export interface User {
 export interface ButcherEntry {
   phone: string;
   name: string;
-  password: string; // hashed in production, plain for mock
+  password: string;
   addedAt: number;
 }
 
@@ -31,7 +38,7 @@ export interface CustomerEntry {
 
 // Admin credentials
 const ADMIN_PHONE = '0547274527';
-const ADMIN_PASSWORD = 'Para2026!'; // Change this in production
+const ADMIN_PASSWORD = 'Para2026!';
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[-\s()]/g, '');
@@ -41,16 +48,19 @@ function isAdminPhone(phone: string): boolean {
   return normalizePhone(phone) === normalizePhone(ADMIN_PHONE);
 }
 
+const useSupabase = !!supabase;
+
 interface AuthStore {
   user: User | null;
   isLoading: boolean;
   otpSent: boolean;
+  dbReady: boolean;
 
-  // Managed butcher list (persisted)
   butchers: ButcherEntry[];
-  
-  // Registered customers list (persisted)
   customers: CustomerEntry[];
+
+  // Init — load from Supabase
+  loadFromDb: () => Promise<void>;
 
   // Computed helpers
   isLoggedIn: () => boolean;
@@ -58,15 +68,14 @@ interface AuthStore {
   isButcher: () => boolean;
   canAccessDashboard: () => boolean;
 
-  // Check if phone is known (admin or butcher)
   getPhoneRole: (phone: string) => UserRole;
   findButcher: (phone: string) => ButcherEntry | undefined;
 
-  // Butcher management (admin only)
+  // Butcher management
   addButcher: (phone: string, name: string, password: string) => void;
   removeButcher: (phone: string) => void;
 
-  // Customer management (admin)
+  // Customer management
   approveCustomer: (phone: string) => void;
   rejectCustomer: (phone: string) => void;
   deleteCustomer: (phone: string) => void;
@@ -75,9 +84,9 @@ interface AuthStore {
   findCustomer: (phone: string) => CustomerEntry | undefined;
 
   // Auth
-  loginWithPassword: (phone: string, password: string) => { success: boolean; reason?: string };
-  registerCustomer: (phone: string, name: string, password: string, city?: string) => { success: boolean; reason?: string };
-  loginAsCustomer: (phone: string, name: string, city?: string) => void; // legacy compat
+  loginWithPassword: (phone: string, password: string) => Promise<{ success: boolean; reason?: string }>;
+  registerCustomer: (phone: string, name: string, password: string, city?: string) => Promise<{ success: boolean; reason?: string }>;
+  loginAsCustomer: (phone: string, name: string, city?: string) => void;
   sendOtp: (phone: string) => Promise<boolean>;
   verifyOtp: (phone: string, otp: string) => Promise<boolean>;
   setName: (name: string) => void;
@@ -90,8 +99,32 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isLoading: false,
       otpSent: false,
+      dbReady: false,
       butchers: [],
       customers: [],
+
+      // Load customers & butchers from Supabase
+      loadFromDb: async () => {
+        if (!useSupabase) {
+          set({ dbReady: true });
+          return;
+        }
+        try {
+          const [customers, butchers] = await Promise.all([
+            fetchCustomers(),
+            fetchButchers(),
+          ]);
+          set({ customers, butchers, dbReady: true });
+
+          // Subscribe to realtime changes
+          subscribeToCustomers((updatedCustomers) => {
+            set({ customers: updatedCustomers });
+          });
+        } catch (err) {
+          console.warn('Failed to load from DB, using localStorage:', err);
+          set({ dbReady: true });
+        }
+      },
 
       isLoggedIn: () => get().user !== null,
       isAdmin: () => get().user?.role === 'admin',
@@ -115,11 +148,14 @@ export const useAuthStore = create<AuthStore>()(
 
       addButcher: (phone, name, password) => {
         const normalized = normalizePhone(phone);
+        // Update local state immediately
         set(state => ({
           butchers: state.butchers.some(b => normalizePhone(b.phone) === normalized)
             ? state.butchers
             : [...state.butchers, { phone: normalized, name, password, addedAt: Date.now() }],
         }));
+        // Persist to Supabase
+        if (useSupabase) addButcherDb(normalized, name, password);
       },
 
       removeButcher: (phone) => {
@@ -127,6 +163,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           butchers: state.butchers.filter(b => normalizePhone(b.phone) !== normalized),
         }));
+        if (useSupabase) removeButcherDb(normalized);
       },
 
       findCustomer: (phone) => {
@@ -141,6 +178,7 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, status: 'approved' as CustomerStatus } : c
           ),
         }));
+        if (useSupabase) approveCustomerDb(normalized);
       },
 
       rejectCustomer: (phone) => {
@@ -148,6 +186,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
         }));
+        if (useSupabase) rejectCustomerDb(normalized);
       },
 
       deleteCustomer: (phone) => {
@@ -155,6 +194,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
         }));
+        if (useSupabase) deleteCustomerDb(normalized);
       },
 
       blockCustomer: (phone) => {
@@ -164,6 +204,7 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, status: 'rejected' as CustomerStatus } : c
           ),
         }));
+        if (useSupabase) blockCustomerDb(normalized);
       },
 
       resetCustomerPassword: (phone) => {
@@ -176,10 +217,11 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, password: newPass } : c
           ),
         }));
+        if (useSupabase) resetCustomerPasswordDb(normalized, newPass);
         return newPass;
       },
 
-      loginWithPassword: (phone, password) => {
+      loginWithPassword: async (phone, password) => {
         const normalized = normalizePhone(phone);
 
         // Admin login
@@ -192,7 +234,7 @@ export const useAuthStore = create<AuthStore>()(
           return { success: true };
         }
 
-        // Butcher login
+        // Butcher login (check local state — loaded from DB on init)
         const butcher = get().butchers.find(b => normalizePhone(b.phone) === normalized);
         if (butcher) {
           if (password !== butcher.password) return { success: false, reason: 'סיסמה שגויה' };
@@ -203,8 +245,15 @@ export const useAuthStore = create<AuthStore>()(
           return { success: true };
         }
 
-        // Customer login
-        const customer = get().customers.find(c => normalizePhone(c.phone) === normalized);
+        // Customer login — try Supabase first, then local state
+        let customer: CustomerEntry | undefined | null;
+        if (useSupabase) {
+          customer = await findCustomerDb(normalized);
+        }
+        if (!customer) {
+          customer = get().customers.find(c => normalizePhone(c.phone) === normalized);
+        }
+
         if (customer) {
           if (customer.status === 'pending') return { success: false, reason: 'ההרשמה שלך ממתינה לאישור מנהל' };
           if (customer.status === 'rejected') return { success: false, reason: 'החשבון שלך חסום. פנה למנהל' };
@@ -220,15 +269,26 @@ export const useAuthStore = create<AuthStore>()(
         return { success: false, reason: 'מספר הטלפון לא נמצא — נרשמים קודם' };
       },
 
-      registerCustomer: (phone, name, password, city) => {
+      registerCustomer: async (phone, name, password, city) => {
         const normalized = normalizePhone(phone);
         if (isAdminPhone(normalized)) return { success: false, reason: 'מספר שמור' };
         if (get().butchers.some(b => normalizePhone(b.phone) === normalized)) return { success: false, reason: 'מספר רשום כשוחט' };
-        // Allow re-registration if existing customer has empty password (migrated from old format)
+
+        // Try Supabase first
+        if (useSupabase) {
+          const result = await registerCustomerDb(normalized, name, password, city);
+          if (result.success) {
+            // Refresh local state
+            const customers = await fetchCustomers();
+            set({ customers });
+          }
+          return result;
+        }
+
+        // Fallback: localStorage
         const existingCustomer = get().customers.find(c => normalizePhone(c.phone) === normalized);
         if (existingCustomer) {
           if (existingCustomer.password) return { success: false, reason: 'מספר כבר רשום' };
-          // Update existing entry with new password and details
           set(state => ({
             customers: state.customers.map(c =>
               normalizePhone(c.phone) === normalized
@@ -249,8 +309,7 @@ export const useAuthStore = create<AuthStore>()(
         return { success: true };
       },
 
-      // Legacy compat – used by reorder
-      loginAsCustomer: (phone, name, city) => {
+      loginAsCustomer: (phone, name) => {
         const normalized = normalizePhone(phone);
         set({
           user: { id: `cust-${Date.now()}`, phone: normalized, name, role: 'customer' },
@@ -331,7 +390,6 @@ export const useAuthStore = create<AuthStore>()(
       version: 1,
       migrate: (persisted: any, version: number) => {
         if (version === 0 || !version) {
-          // Migrate old customer entries that lack password/status fields
           const state = persisted as any;
           if (state?.customers) {
             state.customers = state.customers.map((c: any) => ({

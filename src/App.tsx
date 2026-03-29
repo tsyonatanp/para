@@ -13,6 +13,7 @@ import ToastContainer from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useRoundStore } from './stores/roundStore';
 import { useOrderStore } from './stores/orderStore';
+import { useAuthStore } from './stores/authStore';
 
 // Standalone pages without Layout
 const STANDALONE_PATHS = ['/register'];
@@ -20,11 +21,15 @@ const STANDALONE_PATHS = ['/register'];
 function AppContent() {
   const initialize = useRoundStore(s => s.initialize);
   const initOrders = useOrderStore(s => s.initOrders);
+  const loadFromDb = useAuthStore(s => s.loadFromDb);
   const location = useLocation();
 
   useEffect(() => {
     const boot = async () => {
-      await initialize();
+      await Promise.all([
+        initialize(),
+        loadFromDb(),
+      ]);
       // After parts are loaded, load orders and recalculate soldKg
       const roundId = useRoundStore.getState().round?.id;
       if (roundId) {
@@ -32,7 +37,7 @@ function AppContent() {
       }
     };
     boot();
-  }, [initialize, initOrders]);
+  }, [initialize, initOrders, loadFromDb]);
 
   const isStandalone = STANDALONE_PATHS.includes(location.pathname);
 
