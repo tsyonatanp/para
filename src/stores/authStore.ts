@@ -48,7 +48,6 @@ function isAdminPhone(phone: string): boolean {
   return normalizePhone(phone) === normalizePhone(ADMIN_PHONE);
 }
 
-const useSupabase = !!supabase;
 
 interface AuthStore {
   user: User | null;
@@ -105,7 +104,7 @@ export const useAuthStore = create<AuthStore>()(
 
       // Load customers & butchers from Supabase
       loadFromDb: async () => {
-        if (!useSupabase) {
+        if (!supabase) {
           set({ dbReady: true });
           return;
         }
@@ -187,7 +186,7 @@ export const useAuthStore = create<AuthStore>()(
             : [...state.butchers, { phone: normalized, name, password, addedAt: Date.now() }],
         }));
         // Persist to Supabase
-        if (useSupabase) addButcherDb(normalized, name, password);
+        if (supabase) addButcherDb(normalized, name, password);
       },
 
       removeButcher: (phone) => {
@@ -195,7 +194,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           butchers: state.butchers.filter(b => normalizePhone(b.phone) !== normalized),
         }));
-        if (useSupabase) removeButcherDb(normalized);
+        if (supabase) removeButcherDb(normalized);
       },
 
       findCustomer: (phone) => {
@@ -210,7 +209,7 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, status: 'approved' as CustomerStatus } : c
           ),
         }));
-        if (useSupabase) approveCustomerDb(normalized);
+        if (supabase) approveCustomerDb(normalized);
       },
 
       rejectCustomer: (phone) => {
@@ -218,7 +217,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
         }));
-        if (useSupabase) rejectCustomerDb(normalized);
+        if (supabase) rejectCustomerDb(normalized);
       },
 
       deleteCustomer: (phone) => {
@@ -226,7 +225,7 @@ export const useAuthStore = create<AuthStore>()(
         set(state => ({
           customers: state.customers.filter(c => normalizePhone(c.phone) !== normalized),
         }));
-        if (useSupabase) deleteCustomerDb(normalized);
+        if (supabase) deleteCustomerDb(normalized);
       },
 
       blockCustomer: (phone) => {
@@ -236,7 +235,7 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, status: 'rejected' as CustomerStatus } : c
           ),
         }));
-        if (useSupabase) blockCustomerDb(normalized);
+        if (supabase) blockCustomerDb(normalized);
       },
 
       resetCustomerPassword: (phone) => {
@@ -249,7 +248,7 @@ export const useAuthStore = create<AuthStore>()(
             normalizePhone(c.phone) === normalized ? { ...c, password: newPass } : c
           ),
         }));
-        if (useSupabase) resetCustomerPasswordDb(normalized, newPass);
+        if (supabase) resetCustomerPasswordDb(normalized, newPass);
         return newPass;
       },
 
@@ -279,7 +278,7 @@ export const useAuthStore = create<AuthStore>()(
 
         // Customer login — try Supabase first, then local state
         let customer: CustomerEntry | undefined | null;
-        if (useSupabase) {
+        if (supabase) {
           customer = await findCustomerDb(normalized);
         }
         if (!customer) {
@@ -307,7 +306,7 @@ export const useAuthStore = create<AuthStore>()(
         if (get().butchers.some(b => normalizePhone(b.phone) === normalized)) return { success: false, reason: 'מספר רשום כשוחט' };
 
         // Try Supabase first
-        if (useSupabase) {
+        if (supabase) {
           const result = await registerCustomerDb(normalized, name, password, city);
           if (result.success) {
             // Refresh local state

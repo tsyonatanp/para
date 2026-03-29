@@ -544,6 +544,18 @@ const AdminPage: React.FC = () => {
                         >
                           <Ban size={14} />
                         </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => { deleteCustomer(customer.phone); addToast({ message: `${customer.name} נמחק`, type: 'info' }); }}
+                          title="מחק לקוח"
+                          style={{
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                            borderRadius: 8, padding: '6px 8px', cursor: 'pointer',
+                            color: '#ef4444', display: 'flex',
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </motion.button>
                       </div>
                     </div>
                   </motion.div>
