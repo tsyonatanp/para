@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { AnimalType } from '../types';
 import { MOCK_PARTS } from '../data/mockData';
 import { useAuthStore } from '../stores/authStore';
+import { useToastStore } from '../stores/toastStore';
+import { supabase } from '../lib/supabase';
 
 const ANIMAL_EMOJI: Record<AnimalType, string> = {
   cow: '🐄', calf: '🐂', lamb: '🐑', chicken: '🐓',
@@ -45,6 +47,80 @@ const CreateRoundPage: React.FC = () => {
     price: DEFAULT_PRICES[p.id],
   })));
   const [published, setPublished] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const addToast = useToastStore(s => s.addToast);
+  const user = useAuthStore(s => s.user);
+
+  const handlePublish = async () => {
+    if (publishing) return;
+    setPublishing(true);
+
+    try {
+      if (!supabase) {
+        setPublished(true);
+        return;
+      }
+
+      // 1. Close any existing open rounds
+      await supabase.from('rounds').update({ status: 'closed' }).eq('status', 'open');
+
+      // 2. Create new round
+      const { data: newRound, error: roundErr } = await supabase
+        .from('rounds')
+        .insert({
+          butcher_id: user?.id || 'admin',
+          butcher_name: user?.name || 'מנהל',
+          animal_type: animal,
+          slaughter_date: new Date(slaughterDate + 'T08:00:00+02:00').toISOString(),
+          order_close_date: new Date(closeDate + 'T20:00:00+02:00').toISOString(),
+          total_weight_kg: totalKg,
+          buffer_percent: 10,
+          status: 'open',
+          visibility: 'public',
+          location: 'רחובות, ישראל',
+        })
+        .select()
+        .single();
+
+      if (roundErr || !newRound) {
+        addToast({ message: `שגיאה ביצירת סבב: ${roundErr?.message}`, type: 'warning' });
+        setPublishing(false);
+        return;
+      }
+
+      // 3. Create parts for the new round (all with sold_kg: 0)
+      const partsToInsert = parts.map((p, idx) => ({
+        id: p.id,
+        round_id: newRound.id,
+        name_he: p.nameHe,
+        name_en: p.id,
+        description: '',
+        cooking_suggestions: [],
+        svg_path_id: `part-${p.id}`,
+        total_kg: p.kg,
+        sold_kg: 0,
+        buffer_kg: Math.round(p.kg * 0.1 * 10) / 10,
+        price_per_kg: p.price,
+        processing_options: ['whole', 'sliced'],
+        default_percent: p.pct,
+        emoji: p.emoji,
+      }));
+
+      const { error: partsErr } = await supabase.from('parts').insert(partsToInsert);
+      if (partsErr) {
+        addToast({ message: `שגיאה ביצירת חלקים: ${partsErr.message}`, type: 'warning' });
+        setPublishing(false);
+        return;
+      }
+
+      setPublished(true);
+      addToast({ message: 'הסבב פורסם בהצלחה!', type: 'success' });
+    } catch (err: any) {
+      addToast({ message: `שגיאה: ${err.message}`, type: 'warning' });
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const updateTotalKg = (kg: number) => {
     setTotalKg(kg);
@@ -214,11 +290,12 @@ const CreateRoundPage: React.FC = () => {
         {/* Publish */}
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => setPublished(true)}
+          onClick={handlePublish}
+          disabled={publishing}
           className="btn-primary"
-          style={{ width: '100%', justifyContent: 'center', padding: '16px', fontSize: 17, borderRadius: 14 }}
+          style={{ width: '100%', justifyContent: 'center', padding: '16px', fontSize: 17, borderRadius: 14, opacity: publishing ? 0.6 : 1 }}
         >
-          🚀 פרסם סבב ציבורי
+          {publishing ? '⏳ מפרסם...' : '🚀 פרסם סבב ציבורי'}
         </motion.button>
       </div>
     </div>
