@@ -141,7 +141,7 @@ const Cart: React.FC = () => {
       }}>
         <ShoppingBag size={64} color="#4b5563" />
         <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9' }}>הסל ריק</h2>
-        <p style={{ color: '#94a3b8' }}>בחרו חלקים מהפרה כדי להתחיל</p>
+        <p style={{ color: '#94a3b8' }}>בחרו חלקים כדי להתחיל</p>
         <Link to="/cow" style={{
           background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
           color: 'white', padding: '12px 24px', borderRadius: 12,

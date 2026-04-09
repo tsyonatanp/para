@@ -125,7 +125,7 @@ const ButcherDashboard: React.FC = () => {
           <div>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>דשבורד שוחט</div>
             <h1 style={{ fontSize: 24, fontWeight: 900, color: '#f1f5f9' }}>
-              🐄 פרה אנגוס · שחיטה 20.3
+              🐂 עגל · שחיטה 20.3
             </h1>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>

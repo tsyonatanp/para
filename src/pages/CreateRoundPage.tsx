@@ -34,7 +34,7 @@ const CreateRoundPage: React.FC = () => {
   const isButcher = useAuthStore(s => s.isButcher());
   if (!isButcher) return <Navigate to="/" replace />;
 
-  const [animal, setAnimal] = useState<AnimalType>('cow');
+  const [animal, setAnimal] = useState<AnimalType>('calf');
   const [slaughterDate, setSlaughterDate] = useState('2026-03-20');
   const [closeDate, setCloseDate] = useState('2026-03-19');
   const [totalKg, setTotalKg] = useState(250);

@@ -326,7 +326,7 @@ const CowSVG: React.FC<CowSVGProps> = ({
         viewBox="-40 -20 950 640"
         xmlns="http://www.w3.org/2000/svg"
         style={{ width: '100%', height: 'auto', display: 'block' }}
-        aria-label="פרה אינטראקטיבית"
+        aria-label="בחירת חלקים אינטראקטיבית"
       >
         <defs>
           {/* Cow silhouette clip path */}

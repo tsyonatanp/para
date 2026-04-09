@@ -42,7 +42,7 @@ const BENEFITS = [
   {
     icon: <ShoppingCart size={24} />,
     title: 'הזמנה מהירה',
-    desc: 'הזמינו בשר טרי ב-3 קליקים, ישר מהפרה',
+    desc: 'הזמינו בשר טרי ב-3 קליקים, ישר מהמשחטה',
     color: '#8b5cf6',
   },
   {
@@ -215,7 +215,7 @@ const RegisterPage: React.FC = () => {
                   FreshCut
                 </h1>
                 <p style={{ color: '#94a3b8', fontSize: 16, marginTop: 8, lineHeight: 1.6 }}>
-                  בשר טרי לפי הזמנה – ישר מהמשחטה 🐄
+                  בשר טרי לפי הזמנה – ישר מהמשחטה 🐂
                 </p>
               </motion.div>
 

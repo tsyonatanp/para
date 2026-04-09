@@ -1,6 +1,6 @@
 import { SlaughterRound, MeatPart, Order } from '../types';
 
-// Active round: Angus cow, slaughter Thursday
+// Active round: calf, slaughter Thursday
 const now = new Date('2026-03-18T10:00:00+02:00');
 const slaughterDate = new Date('2026-03-20T08:00:00+02:00');
 const closeDate = new Date('2026-03-19T20:00:00+02:00');
@@ -9,7 +9,7 @@ export const MOCK_ROUND: SlaughterRound = {
   id: 'round-001',
   butcherId: 'butcher-001',
   butcherName: 'דביר ישראלי',
-  animalType: 'cow',
+  animalType: 'calf',
   slaughterDate: slaughterDate.toISOString(),
   orderCloseDate: closeDate.toISOString(),
   totalWeightKg: 250,

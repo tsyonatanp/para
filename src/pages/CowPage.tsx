@@ -51,7 +51,7 @@ const CowPage: React.FC = () => {
           <Link to="/" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: 13 }}>← חזור</Link>
         </div>
         <div className="desktop-only" style={{ fontSize: 13, color: '#94a3b8' }}>
-          לחץ על חלק בפרה לבחירה
+          לחץ על חלק לבחירה
         </div>
       </div>
 

@@ -11,7 +11,7 @@ const ANIMAL_EMOJI: Record<string, string> = {
 };
 
 const ANIMAL_NAME: Record<string, string> = {
-  cow: 'פרת אנגוס', calf: 'עגל', lamb: 'כבש', chicken: 'עוף',
+  cow: 'פרה', calf: 'עגל', lamb: 'כבש', chicken: 'עוף',
 };
 
 const TESTIMONIALS = [
@@ -248,11 +248,11 @@ const HomePage: React.FC = () => {
                       בחרו את החלקים שלכם
                     </div>
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)' }}>
-                      בחירה ויזואלית אינטראקטיבית על מפת הפרה
+                      בחירה ויזואלית אינטראקטיבית על מפת הבשר
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
-                    <span style={{ fontSize: 32 }}>🐄</span>
+                    <span style={{ fontSize: 32 }}>🐂</span>
                     <ArrowLeft size={20} color="rgba(255,255,255,0.7)" />
                   </div>
                 </motion.div>
