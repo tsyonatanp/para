@@ -31,8 +31,8 @@ const DEFAULT_PRICES: Record<string, number> = {
 };
 
 const CreateRoundPage: React.FC = () => {
-  const isButcher = useAuthStore(s => s.isButcher());
-  if (!isButcher) return <Navigate to="/" replace />;
+  const canAccess = useAuthStore(s => s.canAccessDashboard());
+  if (!canAccess) return <Navigate to="/" replace />;
 
   const [animal, setAnimal] = useState<AnimalType>('calf');
   const [slaughterDate, setSlaughterDate] = useState('2026-03-20');
