@@ -37,13 +37,27 @@ const DEFAULT_PARTS = [
   { id: 'other', nameHe: 'כבד / לב / לשון', pct: 3, emoji: '🫀', price: 40 },
 ];
 
+function getNextThursday(): string {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const daysUntilThu = (4 - day + 7) % 7 || 7; // next Thursday (at least 1 day ahead)
+  d.setDate(d.getDate() + daysUntilThu);
+  return d.toISOString().slice(0, 10);
+}
+
+function dayBefore(dateStr: string): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 const CreateRoundPage: React.FC = () => {
   const canAccess = useAuthStore(s => s.canAccessDashboard());
   if (!canAccess) return <Navigate to="/" replace />;
 
   const [animal, setAnimal] = useState<AnimalType>('calf');
-  const [slaughterDate, setSlaughterDate] = useState('2026-03-20');
-  const [closeDate, setCloseDate] = useState('2026-03-19');
+  const [slaughterDate, setSlaughterDate] = useState(getNextThursday);
+  const [closeDate, setCloseDate] = useState(() => dayBefore(getNextThursday()));
   const [totalKg, setTotalKg] = useState(250);
   const [basePrice, setBasePrice] = useState(70);
   const [parts, setParts] = useState(DEFAULT_PARTS.map(p => ({
@@ -197,7 +211,7 @@ const CreateRoundPage: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label className="label">תאריך שחיטה</label>
-              <input type="date" className="input-field" value={slaughterDate} onChange={e => setSlaughterDate(e.target.value)} />
+              <input type="date" className="input-field" value={slaughterDate} onChange={e => { setSlaughterDate(e.target.value); setCloseDate(dayBefore(e.target.value)); }} />
             </div>
             <div>
               <label className="label">סגירת הזמנות</label>
