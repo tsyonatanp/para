@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AnimalType } from '../types';
-import { MOCK_PARTS } from '../data/mockData';
 import { useAuthStore } from '../stores/authStore';
 import { useToastStore } from '../stores/toastStore';
 import { supabase } from '../lib/supabase';
@@ -15,22 +14,28 @@ const ANIMAL_NAME: Record<AnimalType, string> = {
 };
 
 const DEFAULT_PARTS = [
-  { id: 'entrecote', nameHe: 'אנטריקוט', pct: 8, emoji: '🥩' },
-  { id: 'sirloin', nameHe: 'סינטה', pct: 6, emoji: '🥩' },
-  { id: 'fillet', nameHe: 'פילה', pct: 4, emoji: '🥩' },
-  { id: 'ribs', nameHe: 'צלעות', pct: 12, emoji: '🍖' },
-  { id: 'shoulder', nameHe: 'כתף', pct: 15, emoji: '🥩' },
-  { id: 'shank', nameHe: 'שוק', pct: 10, emoji: '🍖' },
-  { id: 'neck', nameHe: 'צוואר', pct: 8, emoji: '🍖' },
-  { id: 'ground', nameHe: 'טחון', pct: 20, emoji: '🫙' },
-  { id: 'bones', nameHe: 'עצמות / ציר', pct: 10, emoji: '🦴' },
-  { id: 'other', nameHe: 'כבד / לב / לשון', pct: 7, emoji: '🫀' },
+  { id: 'entrecote', nameHe: 'אנטריקוט', pct: 8, emoji: '🥩', price: 120 },
+  { id: 'ribs', nameHe: 'צלעות', pct: 12, emoji: '🍖', price: 80 },
+  { id: 'brisket', nameHe: 'חזה', pct: 5, emoji: '🥩', price: 70 },
+  { id: 'shoulder_center', nameHe: 'כתף מרכזי', pct: 6, emoji: '🥩', price: 65 },
+  { id: 'shoulder_roast', nameHe: 'צלי כתף', pct: 4, emoji: '🥩', price: 75 },
+  { id: 'mock_fillet', nameHe: 'פילה מדומה', pct: 3, emoji: '🥩', price: 85 },
+  { id: 'rib_cover', nameHe: 'מכסה הצלע', pct: 3, emoji: '🍖', price: 55 },
+  { id: 'front_shank', nameHe: 'זרוע', pct: 5, emoji: '🍖', price: 50 },
+  { id: 'asado', nameHe: 'אסדו', pct: 8, emoji: '🍖', price: 90 },
+  { id: 'neck', nameHe: 'צוואר', pct: 8, emoji: '🍖', price: 45 },
+  { id: 'sirloin', nameHe: 'סינטה', pct: 6, emoji: '🥩', price: 110 },
+  { id: 'fillet', nameHe: 'פילה', pct: 4, emoji: '🥩', price: 165 },
+  { id: 'shaitel', nameHe: 'שייטל', pct: 5, emoji: '🥩', price: 95 },
+  { id: 'avasit', nameHe: 'אווזית', pct: 5, emoji: '🥩', price: 75 },
+  { id: 'chach', nameHe: "צ'אך", pct: 4, emoji: '🥩', price: 70 },
+  { id: 'kaf', nameHe: 'כף', pct: 5, emoji: '🥩', price: 85 },
+  { id: 'flank', nameHe: 'פלדה', pct: 8, emoji: '🫙', price: 55 },
+  { id: 'rear_shank', nameHe: 'שריר אחורי', pct: 5, emoji: '🍖', price: 55 },
+  { id: 'weissbraten', nameHe: 'ויסבראטן', pct: 3, emoji: '🥩', price: 80 },
+  { id: 'bones', nameHe: 'עצמות / ציר', pct: 5, emoji: '🦴', price: 20 },
+  { id: 'other', nameHe: 'כבד / לב / לשון', pct: 5, emoji: '🫀', price: 40 },
 ];
-
-const DEFAULT_PRICES: Record<string, number> = {
-  entrecote: 120, sirloin: 110, fillet: 165, ribs: 80,
-  shoulder: 65, shank: 55, neck: 45, ground: 55, bones: 20, other: 40,
-};
 
 const CreateRoundPage: React.FC = () => {
   const canAccess = useAuthStore(s => s.canAccessDashboard());
@@ -44,7 +49,6 @@ const CreateRoundPage: React.FC = () => {
   const [parts, setParts] = useState(DEFAULT_PARTS.map(p => ({
     ...p,
     kg: Math.round((totalKg * p.pct) / 100),
-    price: DEFAULT_PRICES[p.id],
   })));
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
